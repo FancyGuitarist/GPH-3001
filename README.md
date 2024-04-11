@@ -1,7 +1,5 @@
-# Informations diverses
-- [Mon compte Github](https://github.com/craqu)
 
-# Notes rencontre avec Dan
+# Notes rencontre
 - Github project
 - spectrogramme, divison des instruments en échantillons orthogonaux (convolution avec échantillon)
 [Base sur les spectrogrammes](https://www.izotope.com/en/learn/understanding-spectrograms.html)
