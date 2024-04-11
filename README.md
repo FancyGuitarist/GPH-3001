@@ -1,6 +1,7 @@
 
 # Notes rencontre
 - Github project
+- analyse par composante principale (PCA)
 - spectrogramme, divison des instruments en échantillons orthogonaux (convolution avec échantillon)
 [Base sur les spectrogrammes](https://www.izotope.com/en/learn/understanding-spectrograms.html)
 [Spectrogramme en python](https://dolby.io/blog/beginners-guide-to-visualizing-audio-as-a-spectogram-in-python/)
