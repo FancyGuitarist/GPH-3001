@@ -1,0 +1,18 @@
+{
+	"nodes":[
+		{"id":"81c6afda6023407e","type":"group","x":-300,"y":-400,"width":540,"height":847,"color":"4","label":"Partie 3 (optionnelle)"},
+		{"id":"404e51ab2a70bdb6","type":"group","x":-262,"y":-240,"width":502,"height":687,"color":"2","label":"Partie 2"},
+		{"id":"f2db1a6eb0f6736e","type":"group","x":-230,"y":-60,"width":450,"height":487,"color":"3","label":"Partie 1"},
+		{"id":"1604060056dcd242","type":"file","file":"Séparer les instruments.md","x":-200,"y":-200,"width":220,"height":80,"color":"2"},
+		{"id":"c4c84ce7f933d6f8","type":"text","text":"identifier l'information rythmique jouer par l'instrument","x":-210,"y":126,"width":190,"height":152},
+		{"id":"83e59c75f09d7c40","type":"text","text":"produire une partition","x":-210,"y":298,"width":190,"height":109},
+		{"id":"eaf97e411401755b","type":"text","text":"identifier les notes jouer de l'échantillon","x":-210,"y":-3,"width":190,"height":109},
+		{"id":"db8f54502e519bdf","type":"text","text":"Faire un GUI","x":-115,"y":-380,"width":175,"height":60,"color":"4"}
+	],
+	"edges":[
+		{"id":"d726abe729327fed","fromNode":"eaf97e411401755b","fromSide":"bottom","toNode":"c4c84ce7f933d6f8","toSide":"top"},
+		{"id":"f816fc71a162e786","fromNode":"c4c84ce7f933d6f8","fromSide":"bottom","toNode":"83e59c75f09d7c40","toSide":"top"},
+		{"id":"aa68e05606c4706f","fromNode":"1604060056dcd242","fromSide":"bottom","toNode":"f2db1a6eb0f6736e","toSide":"top"},
+		{"id":"c922c3750dd98b61","fromNode":"db8f54502e519bdf","fromSide":"bottom","toNode":"404e51ab2a70bdb6","toSide":"top"}
+	]
+}

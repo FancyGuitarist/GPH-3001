@@ -1,0 +1,4 @@
+.zed/settings.json
+./all-samples/*
+./*.wav
+./*.mp3

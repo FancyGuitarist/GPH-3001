@@ -1,0 +1,11 @@
+{
+  "accentColor": "",
+  "enabledCssSnippets": [
+    "adaptive_images",
+    "image_zoom2"
+  ],
+  "textFontFamily": "Apple Braille",
+  "cssTheme": "Minimal",
+  "theme": "obsidian",
+  "interfaceFontFamily": "American Typewriter,Inter,Copperplate"
+}

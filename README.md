@@ -1,7 +1,7 @@
 
 # Notes rencontre
 - Github project
-- analyse par composante principale (PCA)
+- analyse par composante principale [PCA](https://en.wikipedia.org/wiki/Principal_component_analysis)/[LDA](https://en.wikipedia.org/wiki/Linear_discriminant_analysis)
 - spectrogramme, divison des instruments en échantillons orthogonaux (convolution avec échantillon)
 [Base sur les spectrogrammes](https://www.izotope.com/en/learn/understanding-spectrograms.html)
 [Spectrogramme en python](https://dolby.io/blog/beginners-guide-to-visualizing-audio-as-a-spectogram-in-python/)
@@ -23,6 +23,5 @@ générer code LaTeX -> [compilation en PDF](latex4musicians.pdf)
 ## Pour aller plus loins
 1. Plus d'instruments et/ou type d'instruments
 2. Amoindrir la qualité de l'échantillon audio
-3. Exporter le programme sur un plus petit appareil (arduino) -> exporter la partition sur un site web temporaire (cloudflared)?
 4. Multiplatforme (Windows, Mac, Linux) avec docker
 
