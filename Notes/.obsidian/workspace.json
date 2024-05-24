@@ -11,15 +11,8 @@
             "id": "fee573dc3d340686",
             "type": "leaf",
             "state": {
-              "type": "canvas",
-              "state": {
-                "file": "Plan.canvas",
-                "viewState": {
-                  "x": -36.110585331452754,
-                  "y": 25.944234132581116,
-                  "zoom": -0.39407986584261756
-                }
-              }
+              "type": "empty",
+              "state": {}
             }
           }
         ]
@@ -88,7 +81,6 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Plan.canvas",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -105,7 +97,6 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Plan.canvas",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -127,9 +118,7 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {
-                "file": "Plan.canvas"
-              }
+              "state": {}
             }
           },
           {
@@ -163,17 +152,20 @@
   },
   "active": "fee573dc3d340686",
   "lastOpenFiles": [
-    "Detecting_harmonic_change_in_musical_audio.pdf",
-    "Ajouter de la polyphonie.md",
+    "music_structure_analysis_from_acoustic_signals.pdf",
+    "ideas.md",
     "README.md",
+    "Plan.canvas",
+    "Fundamentals_of_music_processing.pdf",
+    "Detecting_harmonic_change_in_musical_audio.pdf",
+    "Automatic Music Transcription: Challenges and Future Directions.pdf",
+    "Ajouter de la polyphonie.md",
     "Notes/cahier_des_charges.md",
     "2024-05-09.md",
     "images/diagram-20240408.svg",
     "Plan_analyse.md",
-    "music_structure_analysis_from_acoustic_signals.pdf",
     "Notes/latex4musicians.pdf",
     "Chercher les échantillons.md",
-    "Plan.canvas",
     "cahier_des_charges.md",
     "Notes/iPlan de match.md",
     "LICENSE",
