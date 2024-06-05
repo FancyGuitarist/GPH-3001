@@ -30,7 +30,7 @@ fi
 # Variables
 PYTHON_SCRIPT="$1"
 TMP_FILE=$(mktemp)
-PROGRESS_INDICATOR="-----------"
+PROGRESS_INDICATOR="-------------------------------------------"
 PROGRESS_LENGTH=${#PROGRESS_INDICATOR}
 INTERVAL=0.1
 
@@ -43,7 +43,6 @@ show_progress() {
         sleep $INTERVAL
     done
 }
-
 # Démarrer le script Python dans un sous-processus
 python3 "$PYTHON_SCRIPT" &> "$TMP_FILE" &
 
@@ -52,7 +51,8 @@ show_progress
 
 # Afficher la sortie du script Python après l'exécution complète
 # cat "$TMP_FILE"
-./compile_with_progress.sh output_score.ly
+lylipond output_score.ly &> "$TMP_FILE" 
 # Nettoyer le fichier temporaire
 rm "$TMP_FILE"
+sleep 5
 open output_score.pdf

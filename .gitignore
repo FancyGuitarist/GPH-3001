@@ -1,4 +1,10 @@
-.zed/settings.json
+.zed
 ./all-samples/*
 ./*.wav
 ./*.mp3
+venv
+SandBox.ipynb
+__pycache__
+./ipynb_checkpoint
+pyrightconfig.json
+test.py
