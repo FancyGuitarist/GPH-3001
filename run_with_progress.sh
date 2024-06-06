@@ -1,12 +1,32 @@
 #!/bin/bash
 # Function to check if the venv is activated
+# Vérifier si Brew est installé
+if ! command -v brew &> /dev/null
+then
+    echo "Homebrew n'est pas installé. Veuillez installer Homebrew d'ab
+ord : https://brew.sh/"
+    exit 1
+fi
+
+# Vérifier si LilyPond est installé
+if brew list | grep  "^lilypond$" &> /dev/null ; then
+    echo "LilyPond est déjà installé."
+else
+    echo "LilyPond n'est pas installé. Installation en cours..."
+    brew install lilypond
+    if [ $? -eq 0 ]; then
+        echo "LilyPond a été installé avec succès."
+    else
+        echo "L'installation de LilyPond a échoué."
+    fi
+fi
 is_venv_activated() {
     [[ "$VIRTUAL_ENV" != "" ]]
 }
 
 # Function to activate the venv
 activate_venv() {
-    source venv/bin/activate
+    source ./venv/bin/activate
 }
 
 # Main script
@@ -22,37 +42,24 @@ else
     fi
 fi
 # Vérifiez que le nom de fichier est fourni
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <python_script>"
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 <python_script> <audiofile.wav>"
     exit 1
 fi
 
 # Variables
 PYTHON_SCRIPT="$1"
+AUDIO_FILE="$2"
 TMP_FILE=$(mktemp)
-PROGRESS_INDICATOR="-------------------------------------------"
-PROGRESS_LENGTH=${#PROGRESS_INDICATOR}
-INTERVAL=0.1
 
-# Fonction pour afficher la barre de progression
-show_progress() {
-    local progress=0
-    while [ $progress -lt $PROGRESS_LENGTH ]; do
-        echo -ne "\rProgress: [${PROGRESS_INDICATOR:0:$progress}>]"
-        progress=$((progress + 1))
-        sleep $INTERVAL
-    done
-}
 # Démarrer le script Python dans un sous-processus
-python3 "$PYTHON_SCRIPT" &> "$TMP_FILE" &
-
+python "$PYTHON_SCRIPT" "$AUDIO_FILE" &> "$TMP_FILE"
+name=$(basename "$AUDIO_FILE" .wav)
 # Appeler la fonction de barre de progression
-show_progress
-
 # Afficher la sortie du script Python après l'exécution complète
 # cat "$TMP_FILE"
-lylipond output_score.ly &> "$TMP_FILE" 
+echo "$name.ly"
+lilypond "$name".ly &> /dev/null
 # Nettoyer le fichier temporaire
+open "$name".pdf
 rm "$TMP_FILE"
-sleep 5
-open output_score.pdf

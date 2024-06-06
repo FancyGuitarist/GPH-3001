@@ -1,4 +1,7 @@
-
+# Instructions
+`chmod +x setup.sh` accorde la permission d'execution de setup.sh
+`./setup.sh` initialise l'environnement virtuel et installe les librairies requises
+`./start.sh song\&samples/gC.wav  ` 
 # Notes rencontre
 - Github project
 - analyse par composante principale [PCA](https://en.wikipedia.org/wiki/Principal_component_analysis)/[LDA](https://en.wikipedia.org/wiki/Linear_discriminant_analysis)

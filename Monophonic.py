@@ -3,6 +3,7 @@ from MusicRetrieval import find_states, prior_probabilities, transition_matrix, 
 import abjad
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 # le problème en ce moment c'est qu'on n'a pas l'information rythmique sur les notes jouées
 # Il faut utilisé une matrice de transition pour determiner correctement les notes jouées
 # utiliser les onset pour trouver les notes jouées
@@ -99,4 +100,6 @@ def audio_to_score(audio_path, output_path):
 
 # Exemple d'utilisation de la fonction
 if __name__ == '__main__':
-    audio_to_score('/Users/antoine/Desktop/GPH/E2024/PFE/song&samples/gC.wav', 'output_score.ly')
+    name = sys.argv[1].split("/")[-1].split(".")[0]
+    print(name)
+    audio_to_score(sys.argv[1], f'{name}.ly')
