@@ -56,7 +56,7 @@ def convert_notes_to_abjad(data,tempo):
             duration_rational = abjad.Duration(1)
         else:
             duration_rational = abjad.Duration(a)
-        
+
         if note_name == '1':  # Handle rest
             abjad_note = abjad.Rest(duration_rational)
         else:
@@ -65,8 +65,6 @@ def convert_notes_to_abjad(data,tempo):
             if '#' in note or "♯" in note:
                 note = note.replace('#', 's')
                 note = note.replace('♯', 's')
-            elif 'b' in note:
-                note = note.replace('b', 'f')
             octave = int(note_name[-1])
             octave_adjustment = octave - 3
             if octave_adjustment >= 0:
@@ -74,7 +72,7 @@ def convert_notes_to_abjad(data,tempo):
             else:
                 octave_str = ',' * abs(octave_adjustment)
             abjad_note = abjad.Note(f"{note}{octave_str}", duration_rational)
-        
+
         abjad_notes.append(abjad_note)
     return abjad_notes
 
@@ -110,4 +108,4 @@ def audio_to_score(audio_path, output_path):
 
 # Exemple d'utilisation de la fonction
 if __name__ == '__main__':
-    audio_to_score('./song&samples/jeux.wav', 'output_score.ly')
+    audio_to_score('/Users/antoine/Desktop/GPH/E2024/PFE/song&samples/gC.wav', 'output_score.ly')
