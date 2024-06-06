@@ -184,11 +184,10 @@ def get_closest_duration(duration,tempo):
     dotted_eighth_note = eighth_note + sixteenth_note
     dotted_sixteenth_note = sixteenth_note + thirty_second_note
 
-    full_note = {whole_note: "1/1", half_note:"1/2", quarter_note:"1/4", eighth_note:"1/8", sixteenth_note:"1/16", thirty_second_note:"1/32"}
-    dotted_note = {dotted_half_note: "3/2" , dotted_quarter_note:"3/4" ,dotted_eighth_note:"3/8" , dotted_sixteenth_note:"3/16" }
-    total_note = full_note | dotted_note
+    full_note = [("1/1" , whole_note), ("1/2" , half_note), ("1/4" , quarter_note), ("1/8" , eighth_note),( "1/16" , sixteenth_note), ("1/32" , thirty_second_note)]
+    dotted_note = [ ("3/2"  , dotted_half_note) , ("3/4" , dotted_quarter_note) ,("3/8" , dotted_eighth_note), ("3/16" , dotted_sixteenth_note) ]
+    total_note = full_note + dotted_note
+    value_of_best_fit = lambda duration: min(total_note, key = lambda x: np.abs(duration - x[1]))
+    best_fit = value_of_best_fit(duration)[0]
 
-    value_of_best_fit = lambda duration: min(total_note.keys(), key = lambda x: np.abs(duration - x))
-    best_fit = value_of_best_fit(duration)
-    value = total_note[best_fit]
-    return value
+    return best_fit

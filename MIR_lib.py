@@ -1,5 +1,5 @@
 
-"""Enum for the different situations that can happen when transitioning from one note to another"""
+"""Enum for the different Situations that can happen when transitioning from one note to another"""
 
 from enum import Enum
 
@@ -35,24 +35,24 @@ class MusicDynamics(Enum):
 def classify_case(i:int,j:int):
     if i == 0:
         if j == 0:
-            return situation.SILENCE_to_SILENCE
+            return Situation.SILENCE_to_SILENCE
         elif j % 2 != 0:
-            return situation.SILENCE_to_ONSET
+            return Situation.SILENCE_to_ONSET
         else:
-            return situation.IMPOSSIBLE
+            return Situation.IMPOSSIBLE
     elif i % 2 != 0:
         if j == 0:
-            return situation.ONSET_to_SILENCE
+            return Situation.ONSET_to_SILENCE
         elif j % 2 != 0:
             # we cant realisticly go from onset to onset in such a short window
-            return situation.IMPOSSIBLE
+            return Situation.IMPOSSIBLE
         if j == i+1:
-            return situation.ONSET_to_SUSTAIN
+            return Situation.ONSET_to_SUSTAIN
     elif i % 2 == 0:
         if j == 0:
-            return situation.SUSTAIN_to_SILENCE
+            return Situation.SUSTAIN_to_SILENCE
         elif j % 2 != 0:
-            return situation.SUSTAIN_to_ONSET
+            return Situation.SUSTAIN_to_ONSET
         if j == i:
-            return situation.SUSTAIN_to_SUSTAIN
-    return situation.IMPOSSIBLE
+            return Situation.SUSTAIN_to_SUSTAIN
+    return Situation.IMPOSSIBLE
