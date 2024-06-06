@@ -157,6 +157,7 @@ def pitches_to_simple_notation(pitch,sr,hop_length=512):
         i = np.array(list(index.keys()))
         length = get_length(i)
         return list(zip(index.values(),i*hop_time,hop_time*length))
+
     s = np.insert(np.diff(np.array(pitch[0]).astype(int)),0,1)
     fullon = np.where(s == 1, s, pitch[1]) # add virtual onset representing begining of silence
     np.append(fullon,1)
@@ -184,10 +185,14 @@ def get_closest_duration(duration,tempo):
     dotted_eighth_note = eighth_note + sixteenth_note
     dotted_sixteenth_note = sixteenth_note + thirty_second_note
 
-    full_note = [("1/1" , whole_note), ("1/2" , half_note), ("1/4" , quarter_note), ("1/8" , eighth_note),( "1/16" , sixteenth_note), ("1/32" , thirty_second_note)]
-    dotted_note = [ ("3/2"  , dotted_half_note) , ("3/4" , dotted_quarter_note) ,("3/8" , dotted_eighth_note), ("3/16" , dotted_sixteenth_note) ]
+    full_note = [("1/1" , whole_note), ("1/2" , half_note), ("1/4" , quarter_note), ("1/8" , eighth_note),
+        ( "1/16" , sixteenth_note), ("1/32" , thirty_second_note)]
+    dotted_note = [ ("3/2"  , dotted_half_note) , ("3/4" , dotted_quarter_note) ,
+        ("3/8" , dotted_eighth_note), ("3/16" , dotted_sixteenth_note) ]
     total_note = full_note + dotted_note
-    value_of_best_fit = lambda duration: min(total_note, key = lambda x: np.abs(duration - x[1]))
+
+    value_of_best_fit = lambda duration:\
+        min(total_note, key = lambda x: np.abs(duration - x[1]))
     best_fit = value_of_best_fit(duration)[0]
 
     return best_fit
