@@ -41,7 +41,7 @@ def transition_matrix(note_min="E2",note_max="E6", prob_stay_note=0.9,prob_stay_
     return transition_matrix
 # debbuging -> print(np.sum(transition_matrix(),axis=1))
 
-"""Basé sur https://github.com/tiagoft/audio_to_midi/blob/master/sound_to_midi/monophonic.py"""
+"""https://github.com/tiagoft/audio_to_midi/blob/master/sound_to_midi/monophonic.py"""
 def prior_probabilities(
         audio_harmonic: np.array,
         audio_percussive: np.array,
@@ -144,6 +144,7 @@ def find_states(priors, transmat) -> np.array :
 
 def pitches_to_simple_notation(pitch,sr,hop_length=512):
     hop_time = hop_length / sr
+
     def get_index(some_list):
         for i, item in enumerate(some_list):
             if item != "False":
@@ -182,11 +183,12 @@ def get_closest_duration(duration,tempo):
     dotted_quarter_note = quarter_note + eighth_note
     dotted_eighth_note = eighth_note + sixteenth_note
     dotted_sixteenth_note = sixteenth_note + thirty_second_note
-    full_note = {"1/1":whole_note, "1/2":half_note, "1/4":quarter_note, "1/8":eighth_note, "1/16":sixteenth_note, "1/32":thirty_second_note}
-    dotted_note = {"3/2" : dotted_half_note, "3/4" : dotted_quarter_note,"3/8" : dotted_eighth_note, "3/16" : dotted_sixteenth_note}
-    total_note = full_note | dotted_note
-    value_of_best_fit = lambda duration: min(total_note.values(), key = lambda x: np.abs(duration - x))
-    best_fit = value_of_best_fit(duration)
-    value = list(total_note.keys())[list(total_note.values()).index(best_fit)]
 
+    full_note = {whole_note: "1/1", half_note:"1/2", quarter_note:"1/4", eighth_note:"1/8", sixteenth_note:"1/16", thirty_second_note:"1/32"}
+    dotted_note = {dotted_half_note: "3/2" , dotted_quarter_note:"3/4" ,dotted_eighth_note:"3/8" , dotted_sixteenth_note:"3/16" }
+    total_note = full_note | dotted_note
+
+    value_of_best_fit = lambda duration: min(total_note.keys(), key = lambda x: np.abs(duration - x))
+    best_fit = value_of_best_fit(duration)
+    value = total_note[best_fit]
     return value
