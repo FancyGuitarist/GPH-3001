@@ -1,25 +1,6 @@
 #!/bin/bash
 # Function to check if the venv is activated
-# Vérifier si Brew est installé
-if ! command -v brew &> /dev/null
-then
-    echo "Homebrew n'est pas installé. Veuillez installer Homebrew d'ab
-ord : https://brew.sh/"
-    exit 1
-fi
 
-# Vérifier si LilyPond est installé
-if brew list | grep  "^lilypond$" &> /dev/null ; then
-    echo "LilyPond est déjà installé."
-else
-    echo "LilyPond n'est pas installé. Installation en cours..."
-    brew install lilypond
-    if [ $? -eq 0 ]; then
-        echo "LilyPond a été installé avec succès."
-    else
-        echo "L'installation de LilyPond a échoué."
-    fi
-fi
 is_venv_activated() {
     [[ "$VIRTUAL_ENV" != "" ]]
 }
