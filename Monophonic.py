@@ -35,14 +35,7 @@ def estimate_pitches(y_harm,y_perc, sr):
     decoded_output = decode_pitch(states, midi_min=librosa.note_to_midi(note_min))
     return decoded_output
 
-def convert_pitches_to_notes(pitches):
-    """Convertit les pitches en noms de notes."""
-    notes = []
-    for pitch in pitches:
-        if pitch is not None:
-            note_name = librosa.hz_to_note(pitch)
-            notes.append(note_name)
-    return notes
+
 
 
 
@@ -95,9 +88,7 @@ def audio_to_score(audio_path, output_path):
     y_harm, y_perc, sr = load_audio(audio_path)
     pitches = estimate_pitches(y_harm, y_perc, sr)
     tempo = librosa.feature.tempo(y= y_perc, sr=sr)
-    #notes = convert_pitches_to_notes(pitches)
     simple_notation = pitches_to_simple_notation(pitches, sr, hop_length=512)
-    print(simple_notation)
 
     abjad_notes = convert_notes_to_abjad(simple_notation,tempo)
     score = create_score(abjad_notes)

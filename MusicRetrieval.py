@@ -3,7 +3,7 @@ from numpy.random.mtrand import sample
 import scipy.io.wavfile as wav
 import numpy as np
 from enum import Enum
-from MIR_lib import classify_case, situation
+from MIR_lib import classify_case, Situation, Note_State, MusicDynamics
 #test = "/Users/antoine/Desktop/GPH/E2024/PFE/80bpm.wav"
 audiopath = './song&samples/Chopin_fantaisy_impromptu.wav'
 #samples, sr = load(test)
@@ -12,29 +12,10 @@ audiopath = './song&samples/Chopin_fantaisy_impromptu.wav'
 # break musical note in their time fraction
 # insert them in a sheet
 
-class Note_State(Enum):
-    SILENCE = "s"
-    ONSET = "o"
-    SUSTAIN = "sus"
-    VIBRATO = "vib"
-    BEND = "ben"
+
 # TODO: estimer les  prob_stay_note et prob_stay_silence en analysant l'échantillon
 # state -> (ON, sustain, silence, vibrato(ON variant), bend( ON variant))
 
-class NoteDuration(Enum):
-    WholeNote = "1"
-    HalfNote = "1/2"
-    QuarterNote = "1/4"
-    EighthNote = "1/8"
-    SixteenthNote = "1/16"
-    ThirtySecondNote = "1/32"
-    SixtyFourthNote = "1/64"
-    DOTTED_WHOLE_NOTE = "3/2"
-    DOTTED_HALF_NOTE = "3/4"
-    DOTTED_QUARTER_NOTE = "3/8"
-    DOTTED_EIGHTH_NOTE = "3/16"
-    DOTTED_SIXTEENTH_NOTE = "3/32"
-    DOTTED_THIRTY_SECOND_NOTE = "3/64"
 
 def transition_matrix(note_min="E2",note_max="E6", prob_stay_note=0.9,prob_stay_silence=0.5):
     # state 1, 3, 5 ... are onsets
@@ -45,22 +26,22 @@ def transition_matrix(note_min="E2",note_max="E6", prob_stay_note=0.9,prob_stay_
     for i in range(N):
         for j in range(N):
             match classify_case(i,j):
-                case situation.SILENCE_to_SILENCE:
+                case Situation.SILENCE_to_SILENCE:
                     transition_matrix[i,j] = prob_stay_silence
-                case situation.SILENCE_to_ONSET:
+                case Situation.SILENCE_to_ONSET:
                     transition_matrix[i,j] = (1 - prob_stay_silence)/number_of_notes
-                case situation.ONSET_to_SUSTAIN: # assuming window is to small to go from onset to onset or onset to silence
+                case Situation.ONSET_to_SUSTAIN: # assuming window is to small to go from onset to onset or onset to silence
                     transition_matrix[i,j] = 1
-                case situation.SUSTAIN_to_SUSTAIN:
+                case Situation.SUSTAIN_to_SUSTAIN:
                     transition_matrix[i,j] = prob_stay_note
-                case situation.SUSTAIN_to_SILENCE:
+                case Situation.SUSTAIN_to_SILENCE:
                     transition_matrix[i,j] = (1 - prob_stay_note)/(number_of_notes+1)
-                case situation.SUSTAIN_to_ONSET:
+                case Situation.SUSTAIN_to_ONSET:
                     transition_matrix[i,j] = (1 - prob_stay_note)/(number_of_notes+1)
     return transition_matrix
 # debbuging -> print(np.sum(transition_matrix(),axis=1))
 
-
+"""Basé sur https://github.com/tiagoft/audio_to_midi/blob/master/sound_to_midi/monophonic.py"""
 def prior_probabilities(
         audio_harmonic: np.array,
         audio_percussive: np.array,
@@ -185,9 +166,10 @@ def pitches_to_simple_notation(pitch,sr,hop_length=512):
         if item != "False" and item != 1:
             fullon = np.append(fullon,item)
             break
-    
+
     fu = dict(get_index(fullon))
     return full_process(fu)
+
 def get_closest_duration(duration,tempo):
     quarter_note = 60 / tempo
     half_note = quarter_note * 2
@@ -208,4 +190,3 @@ def get_closest_duration(duration,tempo):
     value = list(total_note.keys())[list(total_note.values()).index(best_fit)]
 
     return value
-

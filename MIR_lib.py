@@ -3,7 +3,7 @@
 
 from enum import Enum
 
-class situation(Enum):
+class Situation(Enum):
     SILENCE_to_SILENCE = 0
     SILENCE_to_ONSET = 1
     SILENCE_to_SUSTAIN = 2
