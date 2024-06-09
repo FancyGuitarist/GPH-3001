@@ -2,6 +2,7 @@ import librosa
 from MusicRetrieval import find_states, prior_probabilities, transition_matrix, pitches_to_simple_notation, get_closest_duration
 import abjad
 import numpy as np
+import matplotlib.pyplot as plt
 import sys
 # le problème en ce moment c'est qu'on n'a pas l'information rythmique sur les notes jouées
 # Il faut utilisé une matrice de transition pour determiner correctement les notes jouées
@@ -30,7 +31,7 @@ def estimate_pitches(y_harm,y_perc, sr):
     note_min, note_max = estimate_fmin_fmax()
     transmat = transition_matrix(note_min=note_min,note_max=note_max)
     prior = prior_probabilities(y_harm,y_perc, sr)
-
+    channnels =
     states = find_states(priors=prior, transmat=transmat)
     decoded_output = decode_pitch(states, midi_min=librosa.note_to_midi(note_min))
     return decoded_output
@@ -41,11 +42,12 @@ def estimate_pitches(y_harm,y_perc, sr):
 
 def convert_notes_to_abjad(data,tempo):
     """Convertit les tuples de notes en objets Abjad."""
-    treble_notes = []
-    bass_notes = []
+    abjad_notes = []
     for note_name, start_time, duration in data:
         # Convert the duration from float to a rational number
         a = get_closest_duration(duration, tempo)
+        treble_staff = abjad.Staff(lilypond_type='Staff')
+        bass_staff = abjad.Staff(lilypond_type='Staff')
         if a == "1/1":
             duration_rational = abjad.Duration(1)
         else:
@@ -61,17 +63,14 @@ def convert_notes_to_abjad(data,tempo):
                 note = note.replace('♯', 's')
             octave = int(note_name[-1])
             octave_adjustment = octave - 3
-            if octave_adjustment >= 1:
+            if octave_adjustment >= 0:
                 octave_str = '\'' * octave_adjustment
-                treble_notes.append(abjad.Note(f"{note}{octave_str}", duration_rational))
-                bass_notes.append(abjad.Skip(duration_rational))
-
             else:
                 octave_str = ',' * abs(octave_adjustment)
-                bass_notes.append(abjad.Note(f"{note}{octave_str}", duration_rational))
-                treble_notes.append(abjad.Skip(duration_rational))
+            abjad_note = abjad.Note(f"{note}{octave_str}", duration_rational)
 
-    return treble_notes, bass_notes
+        abjad_notes.append(abjad_note)
+    return abjad_notes
 
 def save_score(score, output_path):
     """Exporte la partition en format LilyPond."""
@@ -81,22 +80,14 @@ def audio_to_score(audio_path, output_path):
     """Pipeline complet pour convertir un fichier audio en partition."""
     y_harm, y_perc, sr = load_audio(audio_path)
     pitches = estimate_pitches(y_harm, y_perc, sr)
-    tempo = librosa.feature.tempo(y=y_perc, sr=sr)
+    tempo = librosa.feature.tempo(y= y_perc, sr=sr)
     simple_notation = pitches_to_simple_notation(pitches, sr, hop_length=512)
-    voice = abjad.Voice()
-    treble_notes, bass_notes = convert_notes_to_abjad(simple_notation,tempo)
 
-    treble_staff = abjad.Staff(treble_notes,lilypond_type='Staff',name='treble')
-    bass_staff = abjad.Staff(bass_notes,lilypond_type='Staff',name='bass')
-
-    if treble_staff:
-        abjad.attach(abjad.Clef('treble'), treble_staff[0])
-    if bass_staff:
-        abjad.attach(abjad.Clef('bass'), bass_staff[0])
+    abjad_notes = convert_notes_to_abjad(simple_notation,tempo)
+    staff = abjad.Staff(abjad_notes)
     mark = abjad.MetronomeMark(abjad.Duration(1, 4), int(tempo[0]))
-    score = abjad.Score([treble_staff,bass_staff])
-    abjad.attach(mark, treble_staff[0])
-
+    abjad.attach(mark, staff[0])
+    score = abjad.Score([staff])
     save_score(score, output_path)
 
 
@@ -105,4 +96,5 @@ def audio_to_score(audio_path, output_path):
 # Exemple d'utilisation de la fonction
 if __name__ == '__main__':
     name = sys.argv[1].split("/")[-1].split(".")[0]
+    print(name)
     audio_to_score(sys.argv[1], f'{name}.ly')
