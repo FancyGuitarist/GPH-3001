@@ -1,4 +1,5 @@
 import librosa
+from numba import jit
 from numpy.random.mtrand import sample
 import scipy.io.wavfile as wav
 import numpy as np
@@ -18,10 +19,29 @@ audiopath = './song&samples/Chopin_fantaisy_impromptu.wav'
 
 
 def transition_matrix(note_min="E2",note_max="E6", prob_stay_note=0.9,prob_stay_silence=0.5):
+    """
+    Initialize the transition matrix for the HMM model.
+
+    Parameters
+    ----------
+    note_min : str
+        The lowest note that can be played.
+    note_max : str
+        The highest note that can be played.
+    prob_stay_note : float
+        The probability of staying in the same note state.
+    prob_stay_silence : float
+        The probability of staying in the silence state.
+
+    Return
+    ------
+    transition_matrix : 2D np.array
+        The transition matrix for the HMM model.
+    """
     # state 1, 3, 5 ... are onsets
     # state 2, 4, 6 ... are sustains
     number_of_notes =int(librosa.note_to_midi(note_max) - librosa.note_to_midi(note_min) + 1) # + 1 for it to be inclusive
-    N = 2*number_of_notes + 1 # +1 for silence
+    N = 2*number_of_notes + 1 # +1 for silence state
     transition_matrix = np.zeros((N,N))
     for i in range(N):
         for j in range(N):
@@ -42,6 +62,7 @@ def transition_matrix(note_min="E2",note_max="E6", prob_stay_note=0.9,prob_stay_
 # debbuging -> print(np.sum(transition_matrix(),axis=1))
 
 """https://github.com/tiagoft/audio_to_midi/blob/master/sound_to_midi/monophonic.py"""
+
 def prior_probabilities(
         audio_harmonic: np.array,
         audio_percussive: np.array,
@@ -89,11 +110,11 @@ def prior_probabilities(
 
     """
 
-    fmin = librosa.note_to_hz(note_min)
-    fmax = librosa.note_to_hz(note_max)
-    midi_min = librosa.note_to_midi(note_min)
-    midi_max = librosa.note_to_midi(note_max)
-    n_notes = int(midi_max - midi_min + 1)
+    fmin: float = librosa.note_to_hz(note_min)
+    fmax: float = librosa.note_to_hz(note_max)
+    midi_min: int = librosa.note_to_midi(note_min)
+    midi_max: int = librosa.note_to_midi(note_max)
+    n_notes: int = int(midi_max - midi_min + 1)
 
     # pitch and voicing
     pitch, voiced_flag, voiced_prob = librosa.pyin(
@@ -130,11 +151,21 @@ def prior_probabilities(
     # Normalize priors for each frame
     for n_frame in range(len(pitch)):
         priors[:, n_frame] /= np.sum(priors[:, n_frame])
-
     return priors
 
 
 def find_states(priors, transmat) -> np.array :
+    """
+    Use viterbi algorithm to find the most likely states
+
+    Parameters
+    ----------
+    priors : 2D numpy array.
+        priors[j,t] is the prior probability of being in state j at time t.
+
+    transmat : 2D numpy array.
+        transmat[i,j] is the probability of transitioning from state i to state j.
+    """
     p_init = np.zeros(transmat.shape[0])
     p_init[0] = 1
     states  = librosa.sequence.viterbi(priors, transmat, p_init=p_init)
@@ -143,6 +174,22 @@ def find_states(priors, transmat) -> np.array :
 
 
 def pitches_to_simple_notation(pitch,sr,hop_length=512):
+    """
+    Convert pitch to simple notation
+
+    Parameters
+    ----------
+    pitch : tuple(silence : list, onset : list, sustain : list)
+        pitch[0] : list of 0 and 1 representing on/off of silence state
+    sr : int
+        Sample rate.
+    hop_length : int
+        distance between frames in samples
+
+    Returns
+    -------
+    simple_notation : list of tuple (note : string , onset_time : float, duration_of_note : float)
+    """
     hop_time = hop_length / sr
 
     def get_index(some_list):
@@ -150,7 +197,7 @@ def pitches_to_simple_notation(pitch,sr,hop_length=512):
             if item != "False":
                 yield i, item
     def get_length(indexes):
-        # handle last ellement correctly
+        # doesn't handle last element correctly
         return np.diff(indexes)
 
     def full_process(index:dict):
@@ -163,16 +210,30 @@ def pitches_to_simple_notation(pitch,sr,hop_length=512):
     np.append(fullon,1)
 
     # add a virtual onset to the end of the song to handle hanging sustain
+
     for i in range(len(fullon) -1,0,-1):
         item = fullon[i]
         if item != "False" and item != 1:
             fullon = np.append(fullon,item)
             break
 
-    fu = dict(get_index(fullon))
+    fu = dict(list(get_index(fullon)))
     return full_process(fu)
 
 def get_closest_duration(duration,tempo):
+    """
+    Get closest musical duration to the given time duration using tempo estimation
+    assuming 4/4 time signature
+
+    Parameters
+    ----------
+    duration : float
+    tempo : float
+
+    Returns
+    -------
+    best_fit : str -> 1/4, 1/8, 1/16, 1/32 ... etc
+    """
     quarter_note = 60 / tempo
     half_note = quarter_note * 2
     whole_note = quarter_note * 4

@@ -41,10 +41,10 @@ parser.add_argument(
     'filename', nargs='?', metavar='FILENAME',
     help='audio file to store recording to')
 parser.add_argument(
-    '-d', '--device', type=int_or_str,
+    '-d', '--device', type=int_or_str, default=1,
     help='input device (numeric ID or substring)')
 parser.add_argument(
-    '-r', '--samplerate', type=int, help='sampling rate')
+    '-r', '--samplerate', type=int,default=44100, help='sampling rate')
 parser.add_argument(
     '-c', '--channels', type=int, default=1, help='number of input channels')
 parser.add_argument(

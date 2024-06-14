@@ -10,6 +10,20 @@
 	- gérer les Unissons (ex:A4 & A5 simultanément)
 	- gérer les accords (identifier l'accord jouer, identifier les transpositions)
 	- ou bien tout simplement identifier _toutes les notes jouer par frame_.
-		- appliquer le single pitch a plusieurs cannaux simultanément?
+		- ## IDÉE -> appliquer le single pitch a plusieurs cannaux simultanément?
+			- désavantage -> si la note suivante est trop loins on tombera sur **plusieurs** partiel de la première note avant d'obtenir la note suivante.
 			- on voudrait supprimer le F_0 du cannaux précedent pour trouver soit: un nouveau F_0, un silence
 			-  ainsi de suite jusqu'a avoir un silence PARTOUT.
+
+4. Notes rencontre
+	- Avancement du projet
+	- Identifier les accords ( template matrix avec HMM) ou le multipitch ( avec un CRNN) ?
+	- # Test unitaires, standardiser les test et la mesure de ceux-ci.
+	- Améliorer le model monophonique (dynamiques, tests unitaire, benchmark, ) ou se concentrer sur l'avancement du polyphonique?
+	- Conserver la structure du logiciel en shell script? tout implementer en python?
+	- Correct d'avoir suivit (à quelques différences près) un github préexistant pour faire le monophonique?
+	Points important rencontre
+		- Test unitaire
+		- transformer le code selon le paradigme objet
+		- la section de transcription en notation abjad devrait être wrapper en objet afin de simplifier sa modification ultérieur si besoin
+		- expliquer le code dans le readme

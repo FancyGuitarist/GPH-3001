@@ -8,7 +8,18 @@ then
 ord : https://brew.sh/"
     exit 1
 fi
-
+# Vérifier si ffmpeg est installé
+if brew list | grep  "^ffmpeg$" &> /dev/null ; then
+    echo "ffmpeg est déjà installé."
+else
+    echo "ffmpeg n'est pas installé. Installation en cours..."
+    brew install ffmpeg
+    if [ $? -eq 0 ]; then
+        echo "ffmpeg a été installé avec succès."
+    else
+        echo "L'installation de ffmpeg a échoué."
+    fi
+fi
 # Vérifier si LilyPond est installé
 if brew list | grep  "^lilypond$" &> /dev/null ; then
     echo "LilyPond est déjà installé."

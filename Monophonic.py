@@ -31,7 +31,7 @@ def estimate_pitches(y_harm,y_perc, sr):
     transmat = transition_matrix(note_min=note_min,note_max=note_max)
     prior = prior_probabilities(y_harm,y_perc, sr)
 
-    states = find_states(priors=prior, transmat=transmat)
+    states = find_states(priors=prior, transmat=transmat) # Trouve les états les plus probables avec Viterbi
     decoded_output = decode_pitch(states, midi_min=librosa.note_to_midi(note_min))
     return decoded_output
 
