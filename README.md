@@ -8,7 +8,7 @@
 
 2. estimation des F0 (fréquences fondamentales) de la partie harmonique du signal avec [PYIN](Mauch, Matthias, and Simon Dixon. “pYIN: A fundamental frequency estimator using probabilistic threshold distributions.”), ces fréquences fondamentales sont par la suite ajustées à la note la plus proche et convertie en format numérique (midi).
 
-2.1 PYIN transforme l'audio par STFT (short time fourier transform) YIN avec un threshold variable pour trouver la fréquence fondamentale la plus probable pour chaque fenêtre de l'audio.
+2.1 PYIN transforme l'audio par STFT (short time fourier transform) puis aplique l'algorithme de YIN avec un threshold variable pour trouver la fréquence fondamentale la plus probable pour chaque fenêtre de l'audio.
 
 ![PYIN Schema içi](https://github.com/craqu/GPH-3001/blob/main/Notes/images/pyin.png?raw=true)
 
