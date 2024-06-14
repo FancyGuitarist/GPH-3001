@@ -10,7 +10,7 @@
 
 2.1 PYIN transforme l'audio par STFT (short time fourier transform) et utilise un algorithme de programmation dynamique pour trouver la fréquence fondamentale la plus probable pour chaque fenêtre de l'audio.
 
-[Viterbi](https://github.com/craqu/GPH-3001/blob/main/Notes/images/pyin.png?raw=true)
+![PYIN Schema içi](https://github.com/craqu/GPH-3001/blob/main/Notes/images/pyin.png?raw=true)
 
   - on utilise *conjointement* les *F0* avec la fonction *"librosa.onset.onset_detect"* pour initialiser le *vecteur d'observation* à priori qui consiste à en un vecteur normalisé ou les positions paires sont l'état sustain (une note continue de sonner), les composantes impaires sont l'état onset (une note est frappée) et la position 0 représente le silence.
 
