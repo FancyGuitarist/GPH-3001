@@ -1,98 +1,69 @@
 import librosa
-from numba import jit
-from numpy.random.mtrand import sample
 import scipy.io.wavfile as wav
 import numpy as np
 from enum import Enum
 from MIR_lib import classify_case, Situation, Note_State, MusicDynamics
-#test = "/Users/antoine/Desktop/GPH/E2024/PFE/80bpm.wav"
-audiopath = './song&samples/Chopin_fantaisy_impromptu.wav'
-#samples, sr = load(test)
-#chroma = chroma_stft(y=samples,sr=sr)
+# TODO utiliser la librairy HMMlearn pour implémenter un modèle HMM
+#from hmmlearn import hmm
+#h = hmm.GaussianHMM()
 
-# break musical note in their time fraction
-# insert them in a sheet
+"""
+Le model suivant est basé sur le travail de Tiago Fernandes Tavares et son projet audio_to_midi
 
-
-# TODO: estimer les  prob_stay_note et prob_stay_silence en analysant l'échantillon
-# state -> (ON, sustain, silence, vibrato(ON variant), bend( ON variant))
+https://github.com/tiagoft/audio_to_midi/blob/master/sound_to_midi/monophonic.py
+"""
 
 
-def transition_matrix(note_min="E2",note_max="E6", prob_stay_note=0.9,prob_stay_silence=0.5):
+
+class Note:
+    def __init__(self, name: str, octave: int):
+        self.name : str = name
+        self.octave : int = octave
+    @property
+    def string(self) -> str:
+        return f"{self.name}{self.octave}"
+    @property
+    def midi(self) -> int:
+        return int(librosa.note_to_midi(self.string))
+    @property
+    def hz(self) -> float:
+        return float(librosa.note_to_hz(self.string))
+
+class AudioParams:
     """
-    Initialize the transition matrix for the HMM model.
-
-    Parameters
-    ----------
-    note_min : str
-        The lowest note that can be played.
-    note_max : str
-        The highest note that can be played.
-    prob_stay_note : float
-        The probability of staying in the same note state.
-    prob_stay_silence : float
-        The probability of staying in the silence state.
-
-    Return
-    ------
-    transition_matrix : 2D np.array
-        The transition matrix for the HMM model.
-    """
-    # state 1, 3, 5 ... are onsets
-    # state 2, 4, 6 ... are sustains
-    number_of_notes =int(librosa.note_to_midi(note_max) - librosa.note_to_midi(note_min) + 1) # + 1 for it to be inclusive
-    N = 2*number_of_notes + 1 # +1 for silence state
-    transition_matrix = np.zeros((N,N))
-    for i in range(N):
-        for j in range(N):
-            match classify_case(i,j):
-                case Situation.SILENCE_to_SILENCE:
-                    transition_matrix[i,j] = prob_stay_silence
-                case Situation.SILENCE_to_ONSET:
-                    transition_matrix[i,j] = (1 - prob_stay_silence)/number_of_notes
-                case Situation.ONSET_to_SUSTAIN: # assuming window is to small to go from onset to onset or onset to silence
-                    transition_matrix[i,j] = 1
-                case Situation.SUSTAIN_to_SUSTAIN:
-                    transition_matrix[i,j] = prob_stay_note
-                case Situation.SUSTAIN_to_SILENCE:
-                    transition_matrix[i,j] = (1 - prob_stay_note)/(number_of_notes+1)
-                case Situation.SUSTAIN_to_ONSET:
-                    transition_matrix[i,j] = (1 - prob_stay_note)/(number_of_notes+1)
-    return transition_matrix
-# debbuging -> print(np.sum(transition_matrix(),axis=1))
-
-"""https://github.com/tiagoft/audio_to_midi/blob/master/sound_to_midi/monophonic.py"""
-
-def prior_probabilities(
-        audio_harmonic: np.array,
-        audio_percussive: np.array,
-        srate: int,
-        note_min: str = "E2",
-        note_max: str = "E6",
-        frame_length: int = 2048,
-        hop_length: int = 512,
-        pitch_acc: float = 0.9,
-        voiced_acc: float = 0.9,
-        onset_acc: float = 0.9,
-        spread: float = 0.2) -> np.array:
-    """
-    Estimate prior (observed) probabilities from audio signal
-
-    Parameters
-    ----------
-    audio_signal : 1-D numpy array
-        Array containing audio samples
-
     note_min : string, 'A#4' format
         Lowest note supported by this estimator
     note_max : string, 'A#4' format
         Highest note supported by this estimator
-    srate : int
+    sampling_rate : int
         Sample rate.
     frame_length : int
     window_length : int
     hop_length : int
         Parameters for FFT estimation
+    """
+    def __init__(self):
+        self.sampling_rate: int = 22050
+        self.note_min = Note("E", 2)
+        self.note_max = Note("E", 6)
+        self.frame_length: int = 2048
+        self.hop_length: int = 512
+        self.window_length = int(self.frame_length / 2)
+        self.n_notes: int = self.note_max.midi - self.note_min.midi + 1
+        self.hop_time = self.hop_length / self.sampling_rate
+
+
+class AudioSignal(AudioParams):
+    def __init__(self, audio_path: str):
+        super(AudioSignal,self).__init__()
+        self.y, _ = librosa.load(audio_path,sr=self.sampling_rate)
+        self.y_harmonic = librosa.effects.harmonic(self.y)
+        self.y_percussive = librosa.effects.percussive(self.y)
+        tempo =  librosa.feature.tempo(y=self.y_percussive, sr=self.sampling_rate, hop_length=self.hop_length)
+        self.tempo = tempo[0] if type(tempo) == np.ndarray else tempo
+
+class Params(AudioParams):
+    """"
     pitch_acc : float, between 0 and 1
         Probability (estimated) that the pitch estimator is correct.
     voiced_acc : float, between 0 and 1
@@ -102,6 +73,24 @@ def prior_probabilities(
     spread : float, between 0 and 1
         Probability that the singer/musician had a one-semitone deviation
         due to vibrato or glissando.
+    """
+    def __init__(self):
+        super(Params,self).__init__()
+        self.pitch_acc: float = 0.9
+        self.voiced_acc: float = 0.9
+        self.onset_acc: float = 0.9
+        self.spread: float = 0.2
+
+
+
+class Prior(Params):
+    """
+    Estimate prior (observed) probabilities from audio signal
+
+    Parameters
+    ----------
+    audio_signal : 1-D numpy array
+        Array containing audio samples
 
     Returns
     -------
@@ -109,151 +98,186 @@ def prior_probabilities(
         priors[j,t] is the prior probability of being in state j at time t.
 
     """
+    def __init__(self, audio_harmonic, audio_percussive):
+        super(Prior,self).__init__()
+        self.audio_harmonic = audio_harmonic
+        self.audio_percussive = audio_percussive
 
-    fmin: float = librosa.note_to_hz(note_min)
-    fmax: float = librosa.note_to_hz(note_max)
-    midi_min: int = librosa.note_to_midi(note_min)
-    midi_max: int = librosa.note_to_midi(note_max)
-    n_notes: int = int(midi_max - midi_min + 1)
+    def pyin(self):
+        return librosa.pyin(
+            y=self.audio_harmonic, fmin=float(self.note_min.hz * 0.9), fmax=float(self.note_max.hz * 1.1),
+            sr=self.sampling_rate, frame_length=self.frame_length, win_length=self.window_length,
+            hop_length=self.hop_length)
+    @property
+    def probability(self) -> np.array:
+        """
+        Use Pyin to estimate pitch and voicing, and onset detection to estimate onset frame
+        """
+        # pitch and voicing
+        pitch, voiced_flag, voiced_prob = self.pyin()
+        tuning = librosa.pitch_tuning(pitch)
+        f0_ = np.round(librosa.hz_to_midi(pitch - tuning)).astype(int)
+        onsets = librosa.onset.onset_detect(
+            y=self.audio_percussive, sr=self.sampling_rate,
+            hop_length=self.hop_length, backtrack=True)
 
-    # pitch and voicing
-    pitch, voiced_flag, voiced_prob = librosa.pyin(
-        y=audio_harmonic, fmin=float(fmin * 0.9), fmax=float(fmax * 1.1),
-        sr=srate, frame_length=frame_length, win_length=int(frame_length / 2),
-        hop_length=hop_length)
-    tuning = librosa.pitch_tuning(pitch)
-    f0_ = np.round(librosa.hz_to_midi(pitch - tuning)).astype(int)
-    onsets = librosa.onset.onset_detect(
-        y=audio_percussive, sr=srate,
-        hop_length=hop_length, backtrack=True)
+        priors = np.zeros((self.n_notes * 2 + 1, len(pitch)))
 
-    priors = np.zeros((n_notes * 2 + 1, len(pitch)))
+        for n_frame in range(len(pitch)):
+            if not voiced_flag[n_frame]:
+                priors[0, n_frame] = self.voiced_acc
+                continue
+            else:
+                priors[0, n_frame] = 1 - self.voiced_acc
 
-    for n_frame in range(len(pitch)):
-        if not voiced_flag[n_frame]:
-            priors[0, n_frame] = voiced_acc
+            for j in range(self.n_notes):
+                if n_frame in onsets:  # detected an onset
+                    priors[(j * 2) + 1, n_frame] = self.onset_acc
+                else:
+                    priors[(j * 2) + 1, n_frame] = (1 - self.onset_acc) / self.n_notes
+
+                if (j + self.note_min.midi) == f0_[n_frame]:  # sustain detected
+                    priors[(j * 2) + 2, n_frame] = voiced_prob[n_frame] * self.pitch_acc
+                elif np.abs(j + self.note_min.midi - f0_[n_frame]) == 1:
+                    priors[(j * 2) + 2, n_frame] = voiced_prob[n_frame] * self.pitch_acc * self.spread
+                else:
+                    priors[(j * 2) + 2, n_frame] = (1 - self.pitch_acc * voiced_prob[n_frame]) / self.n_notes
+
+        # Normalize priors for each frame
+        for n_frame in range(len(pitch)):
+            priors[:, n_frame] /= np.sum(priors[:, n_frame])
+        return priors
+
+class CustomHMM(Params):
+    def __init__(self, priors: Prior, transition_matrix: np.array = None, algorithm: str = 'viterbi'):
+        super(CustomHMM,self).__init__()
+        self.priors = priors.probability
+        if transition_matrix is None:
+            self.transition_matrix = self._transition_matrix()
         else:
-            priors[0, n_frame] = 1 - voiced_acc
+            self.transition_matrix = transition_matrix
 
-        for j in range(n_notes):
-            if n_frame in onsets:  # detected an onset
-                priors[(j * 2) + 1, n_frame] = onset_acc
-            else:
-                priors[(j * 2) + 1, n_frame] = (1 - onset_acc) / n_notes
+    def _transition_matrix(self):
 
-            if (j + midi_min) == f0_[n_frame]:  # sustain detected
-                priors[(j * 2) + 2, n_frame] = pitch_acc
-            elif np.abs(j + midi_min - f0_[n_frame]) == 1:
-                priors[(j * 2) + 2, n_frame] = pitch_acc * spread
-            else:
-                priors[(j * 2) + 2, n_frame] = (1 - pitch_acc) / n_notes
+        """
+        Initialize the transition matrix for the HMM model.
 
-    # Normalize priors for each frame
-    for n_frame in range(len(pitch)):
-        priors[:, n_frame] /= np.sum(priors[:, n_frame])
-    return priors
+        Parameters
+        ----------
+        prob_stay_note : float
+            The probability of staying in the same note state.
+        prob_stay_silence : float
+            The probability of staying in the silence state.
+        Return
+        ------
+        transition_matrix : 2D np.array
+            The transition matrix for the HMM model.
+        """
+        # state 1, 3, 5 ... are onsets
+        # state 2, 4, 6 ... are sustains
+        prob_stay_note=0.9
+        prob_stay_silence=0.5
+        N = 2 * self.n_notes + 1 # +1 for silence state
+        transition_matrix = np.zeros((N,N))
+        for i in range(N):
+            for j in range(N):
+                match classify_case(i,j):
+                    case Situation.SILENCE_to_SILENCE:
+                        transition_matrix[i,j] = prob_stay_silence
+                    case Situation.SILENCE_to_ONSET:
+                        transition_matrix[i,j] = (1 - prob_stay_silence)/self.n_notes
+                    case Situation.ONSET_to_SUSTAIN: # assuming window is to small to go from onset to onset or onset to silence
+                        transition_matrix[i,j] = 1
+                    case Situation.SUSTAIN_to_SUSTAIN:
+                        transition_matrix[i,j] = prob_stay_note
+                    case Situation.SUSTAIN_to_SILENCE:
+                        transition_matrix[i,j] = (1 - prob_stay_note)/(self.n_notes+1)
+                    case Situation.SUSTAIN_to_ONSET:
+                        transition_matrix[i,j] = (1 - prob_stay_note)/(self.n_notes+1)
+        return transition_matrix
 
 
-def find_states(priors, transmat) -> np.array :
-    """
-    Use viterbi algorithm to find the most likely states
 
-    Parameters
-    ----------
-    priors : 2D numpy array.
-        priors[j,t] is the prior probability of being in state j at time t.
+    @property
+    def _resolved_states(self) -> np.array :
+        """
+        Use viterbi algorithm to find the most likely states
 
-    transmat : 2D numpy array.
-        transmat[i,j] is the probability of transitioning from state i to state j.
-    """
-    p_init = np.zeros(transmat.shape[0])
-    p_init[0] = 1
-    states  = librosa.sequence.viterbi(priors, transmat, p_init=p_init)
-    return states
+        Parameters
+        ----------
+        priors : 2D numpy array.
+            priors[j,t] is the prior probability of being in state j at time t.
+
+        transmat : 2D numpy array.
+            transmat[i,j] is the probability of transitioning from state i to state j.
+        """
+        p_init = np.zeros(self.transition_matrix.shape[0])
+        p_init[0] = 1
+        states  = librosa.sequence.viterbi(self.priors, self.transition_matrix, p_init=p_init)
+        return states
+
+    def decode_result(self):
+        """return a tuple of 3 lists: silence, onset, sustain. Each list contains a False value if the state is not present, otherwise it contains the note value."""
+        encoded_state: np.array = self._resolved_states
+        silence = np.array([i == 0 for i in encoded_state])
+        sustain = np.array([librosa.midi_to_note(i // 2 - 1 + self.note_min.midi) if i % 2 == 0 and i != 0 else False for i in encoded_state])
+        onset = np.array([librosa.midi_to_note(i // 2 + self.note_min.midi) if i % 2 != 0 else False for i in encoded_state])
+        return (silence, onset, sustain)
 
 
+class Postprocessor(Params):
+    def __init__(self, hmm :CustomHMM):
+        super(Postprocessor,self).__init__()
+        # pour l'instant, on n'utilise pas le sustain, peut-être pourrait-on simplifier le HMM et ne pas le calculer
+        self.hmm = hmm
+        self.silence, self.onset, _ = hmm.decode_result()
 
-def pitches_to_simple_notation(pitch,sr,hop_length=512):
-    """
-    Convert pitch to simple notation
+    @property
+    def simple_notation(self):
+        """
+        Convert hmm result to simple notation
 
-    Parameters
-    ----------
-    pitch : tuple(silence : list, onset : list, sustain : list)
-        pitch[0] : list of 0 and 1 representing on/off of silence state
-    sr : int
-        Sample rate.
-    hop_length : int
-        distance between frames in samples
+        Parameters
+        ----------
+            self.silence : list of 0 and 1 representing on/off of silence state
+            self.onset : list of string (ex: "A#4") or False representing onset state of a certain note pitch
+            self.sustain : list of string (ex: "A#4") or False representing sustain state of a certain note pitch
+        Returns
+        -------
+        simple_notation : list of tuple (note : string , onset_time : float, note_duration : float)
+        """
+        if type(self.hmm) == CustomHMM:
+            def get_index(some_list):
+                for i, item in enumerate(some_list):
+                    if item != "False":
+                        yield i, item
+            def get_length(indexes):
+                # doesn't handle last element correctly
+                return np.diff(indexes)
 
-    Returns
-    -------
-    simple_notation : list of tuple (note : string , onset_time : float, duration_of_note : float)
-    """
-    hop_time = hop_length / sr
+            def mysimple_notation(index:dict):
+                i = np.array(list(index.keys()))
+                length = get_length(i)
+                return list(zip(index.values(),i*self.hop_time, self.hop_time*length))
 
-    def get_index(some_list):
-        for i, item in enumerate(some_list):
-            if item != "False":
-                yield i, item
-    def get_length(indexes):
-        # doesn't handle last element correctly
-        return np.diff(indexes)
+            s = np.insert(np.diff(np.array(self.silence).astype(int)),0,1) # ajout d'un silence au début
+            fullon = np.where(s == 1, s, self.onset) # add virtual onset representing begining of silence
+            np.append(fullon,1)
 
-    def full_process(index:dict):
-        i = np.array(list(index.keys()))
-        length = get_length(i)
-        return list(zip(index.values(),i*hop_time,hop_time*length))
+            # add a virtual onset to the end of the song to handle hanging sustain
 
-    s = np.insert(np.diff(np.array(pitch[0]).astype(int)),0,1)
-    fullon = np.where(s == 1, s, pitch[1]) # add virtual onset representing begining of silence
-    np.append(fullon,1)
+            for i in range(len(fullon) -1,0,-1):
+                item = fullon[i]
+                if item != "False" and item != 1:
+                    fullon = np.append(fullon, item)
+                    break
 
-    # add a virtual onset to the end of the song to handle hanging sustain
+            fu = dict(list(get_index(fullon)))
+            return mysimple_notation(fu)
+        else:
+            raise ValueError("hmm should be a CustomHMM object")
 
-    for i in range(len(fullon) -1,0,-1):
-        item = fullon[i]
-        if item != "False" and item != 1:
-            fullon = np.append(fullon,item)
-            break
-
-    fu = dict(list(get_index(fullon)))
-    return full_process(fu)
-
-def get_closest_duration(duration,tempo):
-    """
-    Get closest musical duration to the given time duration using tempo estimation
-    assuming 4/4 time signature
-
-    Parameters
-    ----------
-    duration : float
-    tempo : float
-
-    Returns
-    -------
-    best_fit : str -> 1/4, 1/8, 1/16, 1/32 ... etc
-    """
-    quarter_note = 60 / tempo
-    half_note = quarter_note * 2
-    whole_note = quarter_note * 4
-    eighth_note = quarter_note / 2
-    sixteenth_note = quarter_note / 4
-    thirty_second_note = quarter_note / 8
-
-    dotted_half_note = quarter_note + half_note
-    dotted_quarter_note = quarter_note + eighth_note
-    dotted_eighth_note = eighth_note + sixteenth_note
-    dotted_sixteenth_note = sixteenth_note + thirty_second_note
-
-    full_note = [("1/1" , whole_note), ("1/2" , half_note), ("1/4" , quarter_note), ("1/8" , eighth_note),
-        ( "1/16" , sixteenth_note), ("1/32" , thirty_second_note)]
-    dotted_note = [ ("3/2"  , dotted_half_note) , ("3/4" , dotted_quarter_note) ,
-        ("3/8" , dotted_eighth_note), ("3/16" , dotted_sixteenth_note) ]
-    total_note = full_note + dotted_note
-
-    value_of_best_fit = lambda duration:\
-        min(total_note, key = lambda x: np.abs(duration - x[1]))
-    best_fit = value_of_best_fit(duration)[0]
-
-    return best_fit
+from unittest import TestCase
+class TestPostprocessor(TestCase):
+    def __init_subclass__(cls) -> None:
+        return super().__init_subclass__()

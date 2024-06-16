@@ -45,17 +45,40 @@ else
     fi
 fi
 
+# Vérifier si Python 3.11 est installé
+if ! command -v python3.11 &> /dev/null;
+then
+    echo "Python 3.11 n'est pas installé. Veuillez installer Python 3.11 avant de continuer."
+fi
+# look if a venv is already present in local directory
+if [ -d "./venv" ]; then
+    echo "Un environnement virtuel est déjà présent dans le répertoire local."
+    echo "Voulez-vous le supprimer et en créer un nouveau ? (y/n)"
+    read response
+    if [ "$response" = "y" ]; then
+        rm -rf ./venv
+    else
+        echo "Vous avez choisit de le conserver, le script d'installation a été annulé."
+        echo "Vous pouvez exécuter start.sh pour lancer le programme."
+        return 1
+    fi
+fi
 }
+
+
 function complete_setup {
-virtualenv --python=3.11  venv
+python3.11 -m venv venv
 source ./venv/bin/activate
 pip install -r requirements.txt
-chmod +x start.sh
-chmod +x run_with_progress.sh
 }
+verify_installation
+if [ $? -eq 1 ]; then
+    exit 1
+fi
+
 complete_setup
 if [ $? -eq 0 ]; then
-    echo "Prérequis complété, vous pouvez désormais executer ./start.sh"
+    echo "Prérequis complété, vous pouvez désormais executer start.sh <chemin/vers/fichier/audio.wav>"
 else
     "setup.sh à échoué"
 fi
