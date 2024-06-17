@@ -4,8 +4,8 @@ import numpy as np
 from enum import Enum
 from MIR_lib import classify_case, Situation, Note_State, MusicDynamics
 # TODO utiliser la librairy HMMlearn pour implémenter un modèle HMM
-#from hmmlearn import hmm
-#h = hmm.GaussianHMM()
+# from hmmlearn import hmm
+# h = hmm.Categorical()
 
 """
 Le model suivant est basé sur le travail de Tiago Fernandes Tavares et son projet audio_to_midi
@@ -124,30 +124,32 @@ class Prior(Params):
             hop_length=self.hop_length, backtrack=True)
 
         priors = np.zeros((self.n_notes * 2 + 1, len(pitch)))
+        priors[0,~voiced_flag] = self.voiced_acc
+        priors[0,voiced_flag] = 1 - self.voiced_acc
 
-        for n_frame in range(len(pitch)):
-            if not voiced_flag[n_frame]:
-                priors[0, n_frame] = self.voiced_acc
-                continue
-            else:
-                priors[0, n_frame] = 1 - self.voiced_acc
+        onset_flags = np.zeros(len(pitch), dtype=bool)
+        onset_flags[onsets] = True
 
-            for j in range(self.n_notes):
-                if n_frame in onsets:  # detected an onset
-                    priors[(j * 2) + 1, n_frame] = self.onset_acc
-                else:
-                    priors[(j * 2) + 1, n_frame] = (1 - self.onset_acc) / self.n_notes
+        priors[1::2, onset_flags] = self.onset_acc  # Set priors for onsets
+        priors[1::2, ~onset_flags] = (1 - self.onset_acc) / self.n_notes  # Set priors for non-onsets
+        # # TODO enlever la for loop et vectoriser la procédure
+        sustain_indices = np.arange(self.n_notes) + self.note_min.midi
+        # sustain_flag = (sustain_indices[:] == f0_)
+        # spread_flag = (np.abs(sustain_indices[:] - (f0_)) == 1)
+        for j in range(self.n_notes):
+            sustain_flag = (sustain_indices[j] == f0_)
+            spread_flag = (np.abs(sustain_indices[j] - f0_) == 1)
+            priors[(j*2) + 2, sustain_flag] = voiced_prob[sustain_flag] * self.pitch_acc
+            priors[(j*2) + 2, spread_flag] = voiced_prob[spread_flag] * self.pitch_acc * self.spread
+            priors[(j*2) + 2, ~sustain_flag & ~spread_flag] = (1 - self.pitch_acc * voiced_prob[~sustain_flag & ~spread_flag]) / self.n_notes
 
-                if (j + self.note_min.midi) == f0_[n_frame]:  # sustain detected
-                    priors[(j * 2) + 2, n_frame] = voiced_prob[n_frame] * self.pitch_acc
-                elif np.abs(j + self.note_min.midi - f0_[n_frame]) == 1:
-                    priors[(j * 2) + 2, n_frame] = voiced_prob[n_frame] * self.pitch_acc * self.spread
-                else:
-                    priors[(j * 2) + 2, n_frame] = (1 - self.pitch_acc * voiced_prob[n_frame]) / self.n_notes
+        # priors[2::2, sustain_flag] = voiced_prob[sustain_flag] * self.pitch_acc
+        # priors[2::2, spread_flag] = voiced_prob[spread_flag] * self.pitch_acc * self.spread
+        # priors[2::2, ~sustain_flag & ~spread_flag] = (1 - self.pitch_acc * voiced_prob[~sustain_flag & ~spread_flag]) / self.n_notes
 
         # Normalize priors for each frame
-        for n_frame in range(len(pitch)):
-            priors[:, n_frame] /= np.sum(priors[:, n_frame])
+
+        priors /= np.sum(priors, axis=0, keepdims=True)
         return priors
 
 class CustomHMM(Params):
@@ -214,7 +216,9 @@ class CustomHMM(Params):
             transmat[i,j] is the probability of transitioning from state i to state j.
         """
         p_init = np.zeros(self.transition_matrix.shape[0])
-        p_init[0] = 1
+        p =  1/ (self.n_notes + 1)
+        p_init[0] = p
+        p_init[1::2] = p
         states  = librosa.sequence.viterbi(self.priors, self.transition_matrix, p_init=p_init)
         return states
 
@@ -262,7 +266,7 @@ class Postprocessor(Params):
                 length = get_length(i)
                 return list(zip(index.values(),i*self.hop_time, self.hop_time*length))
 
-            s = np.insert(np.diff(np.array(self.silence).astype(int)),0,1) # ajout d'un silence au début
+            s = np.diff(np.array(self.silence).astype(int),prepend=0)
             fullon = np.where(s == 1, s, self.onset) # add virtual onset representing begining of silence
             np.append(fullon,1)
 

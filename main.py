@@ -18,7 +18,6 @@ if __name__ == '__main__':
     pitch , flag, prob = prior.pyin()
     p = Postprocessor(hmm)
     simple_notation = p.simple_notation
-    print(simple_notation)
 
     from anotation import Partition
     partition = Partition(simple_notation, audio.tempo)
