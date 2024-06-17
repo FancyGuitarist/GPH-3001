@@ -1,10 +1,13 @@
 .zed
-./all-samples/*
-./*.wav
-./*.mp3
+.DS_Store
+all-samples
+*.ly
+*.wav
+*.mp3
 venv
 SandBox.ipynb
 __pycache__
-./ipynb_checkpoint
+.ipynb_checkpoint
 pyrightconfig.json
 test.py
+rec_unlimited.py

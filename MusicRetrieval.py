@@ -104,10 +104,12 @@ class Prior(Params):
         self.audio_percussive = audio_percussive
 
     def pyin(self):
-        return librosa.pyin(
-            y=self.audio_harmonic, fmin=float(self.note_min.hz * 0.9), fmax=float(self.note_max.hz * 1.1),
-            sr=self.sampling_rate, frame_length=self.frame_length, win_length=self.window_length,
-            hop_length=self.hop_length)
+        f0, voiced_flag, voiced_prob = librosa.pyin(
+                y=self.audio_harmonic, fmin=float(self.note_min.hz * 0.9), fmax=float(self.note_max.hz * 1.1),
+                sr=self.sampling_rate, frame_length=self.frame_length, win_length=self.window_length,
+                hop_length=self.hop_length)
+        return f0, voiced_flag, voiced_prob
+
     @property
     def probability(self) -> np.array:
         """

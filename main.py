@@ -16,10 +16,10 @@ if __name__ == '__main__':
     prior = Prior(audio.y_harmonic,audio.y_percussive)
     hmm = CustomHMM(prior)
     pitch , flag, prob = prior.pyin()
-    #print("pyin" , prob[flag])
     p = Postprocessor(hmm)
     simple_notation = p.simple_notation
     print(simple_notation)
+
     from anotation import Partition
     partition = Partition(simple_notation, audio.tempo)
 
