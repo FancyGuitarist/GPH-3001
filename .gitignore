@@ -9,5 +9,4 @@ SandBox.ipynb
 __pycache__
 .ipynb_checkpoint
 pyrightconfig.json
-test.py
 rec_unlimited.py

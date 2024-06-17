@@ -8,7 +8,7 @@ run: $(VENV)/bin/activate
 	./$(VENV)/bin/python3 $(TARGET) $(AUDIO_FILE)
 
 test: $(VENV)
-	PYTHONWARNINGS=ignore $(VENV)/bin/python3 -m unittest Test/test.py
+	PYTHONWARNINGS=ignore $(VENV)/bin/python3 -m unittest Test/testBasic.py
 
 setup: $(VENV)
 	python3.11 -m venv $(VENV)

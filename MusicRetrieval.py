@@ -3,6 +3,8 @@ import scipy.io.wavfile as wav
 import numpy as np
 from enum import Enum
 from MIR_lib import classify_case, Situation, Note_State, MusicDynamics
+from scipy.sparse import lil_matrix, csr_matrix
+
 # TODO utiliser la librairy HMMlearn pour implémenter un modèle HMM
 # from hmmlearn import hmm
 # h = hmm.Categorical()
@@ -113,7 +115,15 @@ class Prior(Params):
     @property
     def probability(self) -> np.array:
         """
-        Use Pyin to estimate pitch and voicing, and onset detection to estimate onset frame
+        Use Pyin to estimate pitch and voicing, and onset detection to estimate onset frame.
+        Initialise a priors matrix with the estimated probabilities.
+
+        Parameters
+        ----------
+        self : a Prior object
+
+
+
         """
         # pitch and voicing
         pitch, voiced_flag, voiced_prob = self.pyin()
@@ -124,6 +134,7 @@ class Prior(Params):
             hop_length=self.hop_length, backtrack=True)
 
         priors = np.zeros((self.n_notes * 2 + 1, len(pitch)))
+
         priors[0,~voiced_flag] = self.voiced_acc
         priors[0,voiced_flag] = 1 - self.voiced_acc
 
@@ -180,9 +191,11 @@ class CustomHMM(Params):
         # state 1, 3, 5 ... are onsets
         # state 2, 4, 6 ... are sustains
         prob_stay_note=0.9
+        N = 2 * self.n_notes + 1  # +1 for silence state
         prob_stay_silence=0.5
-        N = 2 * self.n_notes + 1 # +1 for silence state
         transition_matrix = np.zeros((N,N))
+         # Initialize a sparse matrix in List of Lists (LIL) format
+
         for i in range(N):
             for j in range(N):
                 match classify_case(i,j):
@@ -282,8 +295,3 @@ class Postprocessor(Params):
             return mysimple_notation(fu)
         else:
             raise ValueError("hmm should be a CustomHMM object")
-
-from unittest import TestCase
-class TestPostprocessor(TestCase):
-    def __init_subclass__(cls) -> None:
-        return super().__init_subclass__()
