@@ -2,8 +2,6 @@
 .DS_Store
 all-samples
 *.ly
-*.wav
-*.mp3
 venv
 SandBox.ipynb
 __pycache__
