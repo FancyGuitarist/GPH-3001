@@ -1,0 +1,8 @@
+[tool.AutomaticMusicTranscription]
+name = "AutomaticMusicTranscription"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = "3.11"
+
+[tool.coverage.run]
+dynamic_context = "test_function"

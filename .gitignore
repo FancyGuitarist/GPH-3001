@@ -1,5 +1,6 @@
 .zed
 .DS_Store
+.ipynb_checkpoints
 all-samples
 *.ly
 venv
@@ -8,3 +9,6 @@ __pycache__
 .ipynb_checkpoint
 pyrightconfig.json
 rec_unlimited.py
+.coverage
+coverage_html
+Test/coverage_html

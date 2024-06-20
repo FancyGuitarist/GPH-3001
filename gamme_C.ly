@@ -14,6 +14,7 @@
             % OPENING:
             % COMMANDS:
             \clef "treble"
+            r1.
             s4
             s4
             s4
@@ -21,7 +22,7 @@
             s4
             s4
             s4
-            c'1.
+            c'2.
         % CLOSE_BRACKETS:
         }
         % OPEN_BRACKETS:
@@ -30,6 +31,7 @@
             % OPENING:
             % COMMANDS:
             \clef "bass"
+            s1.
             c4
             d4
             e4
@@ -37,7 +39,7 @@
             g4
             a4
             b4
-            s1.
+            s2.
         % CLOSE_BRACKETS:
         }
     % CLOSE_BRACKETS:

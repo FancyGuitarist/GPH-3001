@@ -1,4 +1,5 @@
-from MusicRetrieval import AudioSignal, CustomHMM, Prior, Postprocessor
+from MusicRetrieval import AudioSignal, CustomHMM, Preprocessor, Postprocessor
+from MIR_lib import build_transition_matrix
 import numpy as np
 import sys
 
@@ -11,12 +12,10 @@ if __name__ == '__main__':
     output_path = f"{name}.ly"
     audio_path = sys.argv[1]
 
-    import librosa
     audio = AudioSignal(audio_path)
-    prior = Prior(audio.y_harmonic,audio.y_percussive)
-    hmm = CustomHMM(prior)
-    pitch , flag, prob = prior.pyin()
-    p = Postprocessor(hmm)
+    priors = Preprocessor(audio.y_harmonic,audio.y_percussive).priors
+    hmm = CustomHMM(priors, build_transition_matrix(n_notes=audio.n_notes))
+    p = Postprocessor(hmm.resolved_states())
     simple_notation = p.simple_notation
 
     from anotation import Partition

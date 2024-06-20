@@ -27,3 +27,9 @@
 		- transformer le code selon le paradigme orienté objet [x]
 		- la section de transcription en notation abjad devrait être wrapper en objet afin de simplifier sa modification ultérieur si besoin [x]
 		- expliquer le code dans le readme [O] -> besoin modification?
+
+# Notes rencontre 17 juin
+- Changer le nom de la classe HMM ->. découvrir les notes (NoteProcessor)
+- Test coverage (rouler toutes les lignes de code) module coverage de unittest -> mission : trouver le coverage des tests
+- pas faire du AI, c'est poche (ou bien débuter par faire le monophonique avec une technique AI)
+- Faire la reconnaissance d'accord ou lieu du multipitch.

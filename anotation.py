@@ -26,6 +26,7 @@ class Partition:
         sixteenth_note = quarter_note / 4
         thirty_second_note = quarter_note / 8
 
+        dotted_whole_note = whole_note + half_note
         dotted_half_note = quarter_note + half_note
         dotted_quarter_note = quarter_note + eighth_note
         dotted_eighth_note = eighth_note + sixteenth_note
@@ -33,8 +34,8 @@ class Partition:
 
         full_note = [("1/1" , whole_note), ("1/2" , half_note), ("1/4" , quarter_note), ("1/8" , eighth_note),
             ( "1/16" , sixteenth_note), ("1/32" , thirty_second_note)]
-        dotted_note = [ ("3/2"  , dotted_half_note) , ("3/4" , dotted_quarter_note) ,
-            ("3/8" , dotted_eighth_note), ("3/16" , dotted_sixteenth_note) ]
+        dotted_note = [ ("3/2"  , dotted_whole_note) , ("3/4" , dotted_half_note) ,
+            ("3/8" , dotted_quarter_note), ("3/16" , dotted_eighth_note) , ("3/32" , dotted_sixteenth_note)]
         total_note = full_note + dotted_note
 
         value_of_best_fit = lambda duration:\
@@ -54,9 +55,10 @@ class Partition:
                 duration_rational = abjad.Duration(1)
             else:
                 duration_rational = abjad.Duration(duration)
-
             if note_name == '1':  # Handle rest
                 abjad_note = abjad.Rest(duration_rational)
+                treble_notes.append(abjad_note)
+                bass_notes.append(abjad.Skip(duration_rational))
             else:
                 # Convert note name to abjad format
                 note = note_name[:-1].lower()
