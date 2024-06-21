@@ -11,4 +11,5 @@ pyrightconfig.json
 rec_unlimited.py
 .coverage
 coverage_html
+output
 Test/coverage_html

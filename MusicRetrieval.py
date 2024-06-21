@@ -3,7 +3,7 @@ import librosa
 #import scipy.io.wavfile as wav
 import numpy as np
 from enum import Enum
-from MIR_lib import  Situation, Note_State, MusicDynamics, build_transition_matrix
+from MIR_lib import  Situation, Note_State, MusicDynamics, build_transition_matrix, classify_case
 
 # TODO utiliser la librairy HMMlearn pour implémenter un modèle HMM
 # from hmmlearn import hmm
@@ -69,7 +69,7 @@ class AudioSignal(AudioParams):
         tempo =  librosa.feature.tempo(y=self.y_percussive, sr=self.sampling_rate, hop_length=self.hop_length)
         self.tempo = tempo[0] if type(tempo) == np.ndarray else tempo
 
-class Params(AudioParams):
+class MonoParams(AudioParams):
     """"
     pitch_acc : float, between 0 and 1
         Probability (estimated) that the pitch estimator is correct.
@@ -82,7 +82,7 @@ class Params(AudioParams):
         due to vibrato or glissando.
     """
     def __init__(self):
-        super(Params,self).__init__()
+        super(MonoParams,self).__init__()
         self.pitch_acc: float = 0.9
         self.voiced_acc: float = 0.9
         self.onset_acc: float = 0.9
@@ -93,25 +93,37 @@ class Params(AudioParams):
 
 
 
-class Preprocessor(Params):
+class Mono(MonoParams):
     """
-    Estimate prior (observed) probabilities from audio signal
-
-    Parameters
+    Mono class is used to estimate the pitch of a monophonic audio signal.
     ----------
-    audio_signal : 1-D numpy array
-        Array containing audio samples
+    Methods:
+        prepare_chroma() -> return : chroma
+        pyin() -> return : f0, voiced_flag, voiced_prob
+    ----------
+    attributes:
+        priors -> return : np.array
+        transition_matrix -> return : [2N+1, 12N+1] np.array
+        p_init -> return : np.array
+        simple_notation -> return : [()...()]
+        pianoroll -> return : (slience, onset, sustain)
 
-    Returns
-    -------
-    priors : 2D numpy array.
-        priors[j,t] is the prior probability of being in state j at time t.
+
+
 
     """
     def __init__(self, audio_harmonic, audio_percussive):
-        super(Preprocessor, self).__init__()
+        super(Mono, self).__init__()
         self.audio_harmonic = audio_harmonic
         self.audio_percussive = audio_percussive
+        self.pitch, self.voiced_flag, self.voiced_prob = self.pyin()
+        self.tuning = librosa.pitch_tuning(self.pitch)
+
+    def prepare_chroma(self):
+        chroma = librosa.feature.chroma_cqt(y=self.audio_harmonic, sr=self.sampling_rate, hop_length=self.hop_length,
+            tuning=self.tuning, threshold=0.4, n_octaves=4, bins_per_octave=12, fmin=self.note_min.hz)
+        # TODO: maybe do some logarithmic compression to increase the robustness to timbre and volume
+        return chroma
 
     def pyin(self):
         f0, voiced_flag, voiced_prob = librosa.pyin(
@@ -130,13 +142,11 @@ class Preprocessor(Params):
         ----------
         self : a Prior object
 
-
-
         """
         # pitch and voicing
-        pitch, voiced_flag, voiced_prob = self.pyin()
-        tuning = librosa.pitch_tuning(pitch)
-        f0_ = np.round(librosa.hz_to_midi(pitch - tuning)).astype(int)
+        pitch, voiced_flag, voiced_prob = (self.pitch, self.voiced_flag, self.voiced_prob)
+
+        f0_ = np.round(librosa.hz_to_midi(pitch - self.tuning)).astype(int)
         onsets = librosa.onset.onset_detect(
             y=self.audio_percussive, sr=self.sampling_rate,
             hop_length=self.hop_length, backtrack=True)
@@ -170,95 +180,105 @@ class Preprocessor(Params):
         priors /= np.sum(priors, axis=0, keepdims=True)
         return priors
 
+    @property
+    def transition_matrix(self):
 
-
-
-
-
-
-class CustomHMM(Params):
-    def __init__(self, priors: np.array, transition_matrix : np.array, algorithm: str = 'viterbi'):
-        super(CustomHMM,self).__init__()
-        self.priors = priors
-        self.transition_matrix = transition_matrix
-
-    def resolved_states(self) -> np.array :
         """
-        Use viterbi algorithm to find the most likely states
+        Initialize the transition matrix for the HMM model.
 
         Parameters
         ----------
-        priors : 2D numpy array.
-            priors[j,t] is the prior probability of being in state j at time t.
+        prob_stay_note : float
+            The probability of staying in the same note state.
+        prob_stay_silence : float
+            The probability of staying in the silence state.
+        Return
+        ------
+        transition_matrix : 2D np.array
+            The transition matrix for the HMM model.
+        """
+        # state 1, 3, 5 ... are onsets
+        # state 2, 4, 6 ... are sustains
+        N = 2 * self.n_notes + 1  # +1 for silence state
+        transition_matrix = np.zeros((N,N))
 
-        transmat : 2D numpy array.
-            transmat[i,j] is the probability of transitioning from state i to state j.
+        prob_stay_note=0.9
+        prob_stay_silence=0.5
+
+        for i in range(N):
+            for j in range(N):
+                match classify_case(i,j):
+                    case Situation.SILENCE_to_SILENCE:
+                        transition_matrix[i,j] = prob_stay_silence
+                    case Situation.SILENCE_to_ONSET:
+                        transition_matrix[i,j] = (1 - prob_stay_silence)/self.n_notes
+                    case Situation.ONSET_to_SUSTAIN: # assuming window is to small to go from onset to onset or onset to silence
+                        transition_matrix[i,j] = 1
+                    case Situation.SUSTAIN_to_SUSTAIN:
+                        transition_matrix[i,j] = prob_stay_note
+                    case Situation.SUSTAIN_to_SILENCE:
+                        transition_matrix[i,j] = (1 - prob_stay_note)/(self.n_notes+1)
+                    case Situation.SUSTAIN_to_ONSET:
+                        transition_matrix[i,j] = (1 - prob_stay_note)/(self.n_notes+1)
+        return transition_matrix
+
+    @property
+    def p_init(self) -> np.array:
+        """
+        Initialise initial probabilities with uniform distribution over onset and silence states
         """
         p_init = np.zeros(self.transition_matrix.shape[0])
         p =  1/ (self.n_notes + 1)
         p_init[0] = p
         p_init[1::2] = p
-        states  = librosa.sequence.viterbi(self.priors, self.transition_matrix, p_init=p_init)
-        return states
+        return p_init
 
-class HmmWrapper(Params):
-    def __init__(self, Hmm: CustomHMM | Any):
-        super(HmmWrapper,self).__init__()
-
-class Postprocessor(Params):
-    def __init__(self, encoded_state: np.array):
-        super(Postprocessor,self).__init__()
-        self.encoded_state = encoded_state
-        # pour l'instant, on n'utilise pas le sustain, peut-être pourrait-on simplifier le HMM et ne pas le calculer
-
-    def pianoroll(self, encoded_state):
+    @property
+    def pianoroll(self):
         """return a tuple of 3 lists: silence, onset, sustain. Each list contains a False value if the state is not present, otherwise it contains the note value."""
-        self.encode_state = encoded_state
-        silence = np.array([i == 0 for i in encoded_state])
-        sustain = np.array([librosa.midi_to_note(i // 2 - 1 + self.note_min.midi) if i % 2 == 0 and i != 0 else False for i in encoded_state])
-        onset = np.array([librosa.midi_to_note(i // 2 + self.note_min.midi) if i % 2 != 0 else False for i in encoded_state])
+        self.encoded_state = librosa.sequence.viterbi(self.priors, self.transition_matrix, p_init=self.p_init)
+        silence = np.array([i == 0 for i in  self.encoded_state])
+        sustain = np.array([librosa.midi_to_note(i // 2 - 1 + self.note_min.midi) if i % 2 == 0 and i != 0 else False for i in self.encoded_state])
+        onset = np.array([librosa.midi_to_note(i // 2 + self.note_min.midi) if i % 2 != 0 else False for i in self.encoded_state])
+        on = np.where(onset != "False", onset, sustain)
         return (silence, onset, sustain)
-
 
     @property
     def simple_notation(self):
         """
-        Convert hmm result to simple notation
+        Convert HMM result to simple notation.
 
         Parameters
         ----------
-            self.silence : list of 0 and 1 representing on/off of silence state
-            self.onset : list of string (ex: "A#4") or False representing onset state of a certain note pitch
-            self.sustain : list of string (ex: "A#4") or False representing sustain state of a certain note pitch
+        self.silence : list of 0 and 1 representing on/off of silence state
+        self.onset : list of string (e.g., "A#4") or False representing onset state of a certain note pitch
+        self.sustain : list of string (e.g., "A#4") or False representing sustain state of a certain note pitch
+
         Returns
         -------
-        simple_notation : list of tuple (note : string , onset_time : float, note_duration : float)
+        simple_notation : list of tuple (note: string, onset_time: float, note_duration: float)
         """
-        self.silence, self.onset, _ = self.pianoroll(self.encoded_state)
-        def get_index(some_list):
-            for i, item in enumerate(some_list):
-                if item != "False":
-                    yield i, item
-        def get_length(indexes):
-            # doesn't handle last element correctly
-            return np.diff(indexes)
 
-        def mysimple_notation(index:dict):
-            i = np.array(list(index.keys()))
-            length = get_length(i)
-            return list(zip(index.values(),i*self.hop_time, self.hop_time*length))
+        self.silence, self.onset, _ = self.pianoroll
 
-        s = np.diff(np.array(self.silence).astype(int),prepend=0)
-        fullon = np.where(s == 1, s, self.onset) # add virtual onset representing begining of silence
-        np.append(fullon,1)
 
-        # add a virtual onset to the end of the song to handle hanging sustain
+        def generate_simple_notation(valid_items):
+            """Convert indices and values to simple notation format."""
+            onset_dict = dict((index, item) for index, item in enumerate(valid_items) if item != "False")
+            indices = np.array(list(onset_dict.keys()))
+            durations = np.diff(indices)
 
-        for i in range(len(fullon) -1,0,-1):
-            item = fullon[i]
-            if item != "False" and item != 1:
-                fullon = np.append(fullon, item)
+            return list(zip(onset_dict.values(), indices * self.hop_time, self.hop_time * durations))
+
+        # Convert silence to onset array with virtual onsets at the beginning of silences
+        silence_diff = np.diff(np.array(self.silence).astype(int), prepend=0)
+        onset_with_silence = np.where(silence_diff == 1,silence_diff, self.onset)
+        np.append(onset_with_silence, 1)  # Add virtual onset at the end
+
+        # Add a virtual onset to the end of the song to handle hanging sustain
+        for index in range(len(onset_with_silence) - 1, 0, -1):
+            if onset_with_silence[index] != "False" and onset_with_silence[index] != 1:
+                onset_with_silence = np.append(onset_with_silence, onset_with_silence[index])
                 break
 
-        fu = dict(list(get_index(fullon)))
-        return mysimple_notation(fu)
+        return generate_simple_notation(onset_with_silence)

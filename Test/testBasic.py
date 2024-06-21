@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from unittest.mock import patch
 from MIR_lib import build_transition_matrix
-from MusicRetrieval import Note, AudioParams, AudioSignal, Preprocessor, CustomHMM, Postprocessor
+from MusicRetrieval import Note, AudioParams, AudioSignal, Mono
 
 AUDIO_PATH = 'Test/simple_note_progression.wav'
 
@@ -53,38 +53,31 @@ class TestAudioSignal(unittest.TestCase):
 class TestPrior(unittest.TestCase):
     def test_prior_probability(self):
         audio_signal = AudioSignal(audio_path=AUDIO_PATH)
-        priors = Preprocessor(audio_signal.y_harmonic, audio_signal.y_percussive).priors
+        priors = Mono(audio_signal.y_harmonic, audio_signal.y_percussive).priors
         n_note = audio_signal.n_notes
         state_size = 2 * n_note + 1
         self.assertEqual(priors.shape[0], state_size)
 
-class TestCustomHMM(unittest.TestCase):
+class TestMono(unittest.TestCase):
     def test_custom_hmm(self):
         audio_signal = AudioSignal(audio_path=AUDIO_PATH)
-        prior = Preprocessor(audio_signal.y_harmonic, audio_signal.y_percussive).priors
-        hmm = CustomHMM(prior, transition_matrix=build_transition_matrix(n_notes=audio_signal.n_notes))
-        resolved_states = hmm.resolved_states()
-        self.assertEqual(len(resolved_states), prior.shape[1])
+        mono = Mono(audio_signal.y_harmonic, audio_signal.y_percussive)
+        resolved_states = mono.pianoroll[1]
+        self.assertEqual(len(resolved_states), mono.priors.shape[1])
 
 class TestPostprocessor(unittest.TestCase):
     def test_postprocessor_simple_notation(self):
         audio_signal = AudioSignal(audio_path=AUDIO_PATH)
-        prior = Preprocessor(audio_signal.y_harmonic, audio_signal.y_percussive).priors
-        hmm = CustomHMM(prior, transition_matrix=build_transition_matrix(n_notes=audio_signal.n_notes))
-        resolved_states = hmm.resolved_states()
-        postprocessor = Postprocessor(resolved_states)
-        simple_notation = postprocessor.simple_notation
+        m = Mono(audio_signal.y_harmonic, audio_signal.y_percussive)
+        simple_notation = m.simple_notation
         self.assertIsInstance(simple_notation, list)
         self.assertGreater(len(simple_notation), 0)
 
 class TestCleanData(unittest.TestCase):
     def test_simple_notation(self):
         audio_signal = AudioSignal(audio_path=AUDIO_PATH)
-        prior = Preprocessor(audio_signal.y_harmonic, audio_signal.y_percussive).priors
-        hmm = CustomHMM(prior, transition_matrix=build_transition_matrix(n_notes=audio_signal.n_notes))
-        resolved_states = hmm.resolved_states()
-        postprocessor = Postprocessor(resolved_states)
-        monophonic_simple_notation = postprocessor.simple_notation
+        mono = Mono(audio_signal.y_harmonic, audio_signal.y_percussive)
+        monophonic_simple_notation = mono.simple_notation
 
         note_names = ['C4', 'E4', 'G4', 'C5']
         note_time = 0.5
@@ -98,12 +91,8 @@ class TestDirtyData(unittest.TestCase):
     def test_simple_notation(self):
         DIRTY_AUDIO_PATH = 'Test/C_scale_dirty.wav'
         audio_signal = AudioSignal(audio_path=DIRTY_AUDIO_PATH)
-        prior = Preprocessor(audio_signal.y_harmonic, audio_signal.y_percussive).priors
-        hmm = CustomHMM(prior, transition_matrix=build_transition_matrix(n_notes=audio_signal.n_notes))
-        resolved_states = hmm.resolved_states()
-        postprocessor = Postprocessor(resolved_states)
-        monophonic_simple_notation = postprocessor.simple_notation
-
+        m = Mono(audio_signal.y_harmonic, audio_signal.y_percussive)
+        monophonic_simple_notation = m.simple_notation
 
         note_names = ["1", 'C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4']
         time = [2.577, 0.51, 0.46, 0.48, 0.487, 0.51, 0.487, 0.44, 1.416]
