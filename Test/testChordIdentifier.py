@@ -35,11 +35,11 @@ class TestChordIdentifier(unittest.TestCase):
         # Check the first silence template
         np.testing.assert_array_equal(chord_template[:, 0], silence_template)
         # Check the first major template
-        np.testing.assert_array_equal(chord_template[:, 1+ 0], major_template)
+        np.testing.assert_array_equal(chord_template[:, 1], major_template)
         # Check the first minor template (shifted by 12 positions)
-        np.testing.assert_array_equal(chord_template[:, 1+ 12], minor_template)
+        np.testing.assert_array_equal(chord_template[:, 1 + 12], minor_template)
         # Check the first dominant 7th template (shifted by 24 positions)
-        np.testing.assert_array_equal(chord_template[:, 1+ 24], dominant_7th_template)
+        np.testing.assert_array_equal(chord_template[:, 1 + 24], dominant_7th_template)
 
 
     def test_observation_matrix(self):

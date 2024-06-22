@@ -12,4 +12,5 @@ rec_unlimited.py
 .coverage
 coverage_html
 output
+*.ipynb
 Test/coverage_html
