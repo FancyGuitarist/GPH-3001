@@ -33,11 +33,14 @@ class ChordIdentifier(AudioSignal):
         A: transition matrix
         transition matrix A is a N x N matrix where A[i,j] is the probability of transitioning from chord i to chord j
         """
-        p=0.05
+        p=0.9
+        p_stay_silent = 0.5
         N=self.chord_labels.shape[0]
         """compute a uniform transition matrix between chords"""
         A = np.ones((N,N)) * (1-p)/(N-1)
         np.fill_diagonal(A,p)
+        A[0,0] = p_stay_silent
+        A[0,1:] = (1-p_stay_silent)/(N-1)
         return A
     @property
     def chord_labels(self):
@@ -130,7 +133,7 @@ class ChordIdentifier(AudioSignal):
             labels = self.chord_labels.tolist()
             plt.yticks(range(len(self.chord_labels)),labels=labels)
             # Generate time values for the x-axis
-            time_values = librosa.times_like(im, sr=self.sr,hop_length=512)
+            time_values = librosa.times_like(im, sr=self.sampling_rate,hop_length=self.hop_length)
 
             # Set the x-ticks to time values in seconds
             # Reduce the number of x-ticks for better readability
@@ -162,4 +165,4 @@ if __name__ == "__main__":
     #librosa.display.specshow(obs, y_axis='off', x_axis='time')
     #plt.show()
     s = c.simple_notation()
-    print(s)
+    c.show("result")
