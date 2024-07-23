@@ -1,10 +1,11 @@
+from numpy._typing import _VoidCodes
 from typing_extensions import Any
 import librosa
 #import scipy.io.wavfile as wav
 import numpy as np
 from enum import Enum
 from MIR_lib import  Situation, Note_State, MusicDynamics, build_transition_matrix, classify_case
-
+import matplotlib.pyplot as plt
 # TODO utiliser la librairy HMMlearn pour implémenter un modèle HMM
 # from hmmlearn import hmm
 # h = hmm.Categorical()
@@ -52,22 +53,28 @@ class AudioParams:
     def __init__(self):
         self.sampling_rate: int = 22050
         self.note_min = Note("E", 2)
-        self.note_max = Note("E", 6)
+        self.note_max = Note("C", 7)
         self.frame_length: int = 2048
         self.hop_length: int = 512
         self.window_length = int(self.frame_length / 2)
-        self.n_notes: int = self.note_max.midi - self.note_min.midi + 1
         self.hop_time = self.hop_length / self.sampling_rate
-
+    @property
+    def n_notes(self):
+        return self.note_max.midi - self.note_min.midi + 1
 
 class AudioSignal(AudioParams):
-    def __init__(self, audio_path: str):
+    def __init__(self, audio: str | np.ndarray):
         super(AudioSignal,self).__init__()
-        self.y, _ = librosa.load(audio_path,sr=self.sampling_rate)
+        if type(audio) == np.ndarray:
+            self.y = audio
+        elif type(audio) == str:
+            self.y, _ = librosa.load(audio,sr=self.sampling_rate)
+        else:
+            raise ValueError("Audio must be a path to a file or a numpy array")
         self.y_harmonic = librosa.effects.harmonic(self.y)
-        self.y_percussive = librosa.effects.percussive(self.y)
-        tempo =  librosa.feature.tempo(y=self.y_percussive, sr=self.sampling_rate, hop_length=self.hop_length)
-        self.tempo = tempo[0] if type(tempo) == np.ndarray else tempo
+        #self.y_percussive = librosa.effects.percussive(self.y)
+        #tempo =  librosa.feature.tempo(y=self.y_percussive, sr=self.sampling_rate, hop_length=self.hop_length)
+        #self.tempo = tempo[0] if type(tempo) == np.ndarray else tempo
 
 class MonoParams(AudioParams):
     """"
@@ -132,6 +139,26 @@ class Mono(MonoParams):
                 hop_length=self.hop_length)
         return f0, voiced_flag, voiced_prob
 
+    def no_hmm(self):
+        pitch, voiced_flag, voiced_prob = (self.pitch, self.voiced_flag, self.voiced_prob)
+        f0_ = np.round(librosa.hz_to_midi(pitch - self.tuning)).astype(int)
+        # make a pinaoroll with the notes
+        pianoroll = np.zeros((self.n_notes, len(pitch)))
+        for index, (note, voice) in enumerate(list(zip(f0_, voiced_flag))):
+            pianoroll[note - self.note_min.midi, index] = 1 if ( voiced_prob[index] > 0.7) else 0
+            print(note, voice, voiced_prob[index])
+        return pianoroll
+
+    def show_piano_roll(self):
+        pianoroll = self.no_hmm()
+        plt.figure(figsize=(12, 4))
+        librosa.display.specshow(pianoroll, x_axis='time', y_axis='cqt_note', hop_length=self.hop_length)
+        plt.xlabel('Time')
+        plt.ylabel('Note')
+        plt.title('Piano roll')
+        plt.show()
+
+
     @property
     def priors(self) -> np.array:
         """
@@ -164,16 +191,12 @@ class Mono(MonoParams):
         # # TODO enlever la for loop et vectoriser la procédure
         sustain_indices = np.arange(self.n_notes) + self.note_min.midi
 
-
         for j in range(self.n_notes):
             sustain_flag = (sustain_indices[j] == f0_)
             spread_flag = (np.abs(sustain_indices[j] - f0_) == 1)
             priors[(j*2) + 2, sustain_flag] = voiced_prob[sustain_flag] * self.pitch_acc
             priors[(j*2) + 2, spread_flag] = voiced_prob[spread_flag] * self.pitch_acc * self.spread
             priors[(j*2) + 2, ~sustain_flag & ~spread_flag] = (1 - self.pitch_acc * voiced_prob[~sustain_flag & ~spread_flag]) / self.n_notes
-        # priors[self.sustain_slice, sustain_flag] = voiced_prob[sustain_flag] * self.pitch_acc
-        # priors[self.sustain_slice, spread_flag] = voiced_prob[spread_flag] * self.pitch_acc * self.spread
-        # priors[self.sustain_slice, ~sustain_flag & ~spread_flag] = (1 - self.pitch_acc * voiced_prob[~sustain_flag & ~spread_flag]) / self.n_notes
 
         # Normalize priors for each frame
 
@@ -234,17 +257,22 @@ class Mono(MonoParams):
         return p_init
 
     @property
-    def pianoroll(self):
-        """return a tuple of 3 lists: silence, onset, sustain. Each list contains a False value if the state is not present, otherwise it contains the note value."""
+    def decoded_states(self):
+        """return a list of note value."""
         self.encoded_state = librosa.sequence.viterbi(self.priors, self.transition_matrix, p_init=self.p_init)
-        silence = np.array([i == 0 for i in  self.encoded_state])
-        sustain = np.array([librosa.midi_to_note(i // 2 - 1 + self.note_min.midi) if i % 2 == 0 and i != 0 else False for i in self.encoded_state])
-        onset = np.array([librosa.midi_to_note(i // 2 + self.note_min.midi) if i % 2 != 0 else False for i in self.encoded_state])
-        on = np.where(onset != "False", onset, sustain)
-        return (silence, onset, sustain)
+        result = []
+        for i in self.encoded_state:
+            if i == 0:
+                result.append("N")
+            elif i % 2 == 0:
+                result.append(librosa.midi_to_note(i // 2 - 1 + self.note_min.midi))
+            else:
+                result.append(librosa.midi_to_note(i // 2 + self.note_min.midi))
 
-    @property
-    def simple_notation(self):
+        return np.array(result)
+
+
+    def simple_notation(self, result ):
         """
         Convert HMM result to simple notation.
 
@@ -259,26 +287,13 @@ class Mono(MonoParams):
         simple_notation : list of tuple (note: string, onset_time: float, note_duration: float)
         """
 
-        self.silence, self.onset, _ = self.pianoroll
+        change_index = np.insert(np.where(result[1:] != result[:-1])[0] + 1, 0, 0)
+        onset_time = change_index * self.hop_time
+        duration = np.append(onset_time[1:], len(result) * self.hop_time) - onset_time
+        return list(zip(result[change_index], onset_time, duration))
 
 
-        def generate_simple_notation(valid_items):
-            """Convert indices and values to simple notation format."""
-            onset_dict = dict((index, item) for index, item in enumerate(valid_items) if item != "False")
-            indices = np.array(list(onset_dict.keys()))
-            durations = np.diff(indices)
-
-            return list(zip(onset_dict.values(), indices * self.hop_time, self.hop_time * durations))
-
-        # Convert silence to onset array with virtual onsets at the beginning of silences
-        silence_diff = np.diff(np.array(self.silence).astype(int), prepend=0)
-        onset_with_silence = np.where(silence_diff == 1,silence_diff, self.onset)
-        np.append(onset_with_silence, 1)  # Add virtual onset at the end
-
-        # Add a virtual onset to the end of the song to handle hanging sustain
-        for index in range(len(onset_with_silence) - 1, 0, -1):
-            if onset_with_silence[index] != "False" and onset_with_silence[index] != 1:
-                onset_with_silence = np.append(onset_with_silence, onset_with_silence[index])
-                break
-
-        return generate_simple_notation(onset_with_silence)
+if __name__ == "__main__":
+    audio = AudioSignal("song&samples/gamme_C.wav")
+    mono = Mono(audio.y_harmonic, audio.y_percussive)
+    mono.show_piano_roll()

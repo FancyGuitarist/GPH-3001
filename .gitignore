@@ -3,6 +3,7 @@
 .ipynb_checkpoints
 all-samples
 *.ly
+*.wav
 venv
 SandBox.ipynb
 __pycache__
@@ -13,4 +14,8 @@ rec_unlimited.py
 coverage_html
 output
 *.ipynb
+pyproject.toml
 Test/coverage_html
+Validation/maestro*
+Validation/nsynth*
+Notes/.obsidian

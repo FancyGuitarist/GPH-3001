@@ -2,7 +2,7 @@ from MusicRetrieval import AudioSignal, Mono
 from Chord import ChordIdentifier
 import numpy as np
 import sys
-
+from bivariate import Pseudo2D
 
 
 
@@ -14,6 +14,7 @@ if __name__ == '__main__':
 
     audio = AudioSignal(audio_path)
     mono = Mono(audio.y_harmonic, audio.y_percussive)
+    pseudo2d = Pseudo2D(audio)
     #mono.simple_notation
     from anotation import Partition
     partition = Partition(mono.simple_notation, audio.tempo)

@@ -1,15 +1,15 @@
 import abjad
 import numpy as np
 class Partition:
-    def __init__(self,simple_notation ,tempo):
+    def __init__(self, simple_notation, tempo):
         self.tempo = tempo
         self.simple_notation = simple_notation
         self.treble_notes, self.bass_notes = self.convert_notes_to_abjad(simple_notation)
+
     def _get_closest_duration(self, duration):
         """
         Get closest musical duration to the given time duration using tempo estimation
         assuming 4/4 time signature
-
         Parameters
         ----------
         duration : float
@@ -43,6 +43,11 @@ class Partition:
         best_fit = value_of_best_fit(duration)[0]
 
         return best_fit
+    def convert_pianoroll_to_simple_notation(self, pianoroll):
+        for note in pianoroll:
+            if note[0] == 'N':
+                note[0] = 'R'
+
 
     def convert_notes_to_abjad(self, simple_notation):
         """Convertit les tuples de notes en objets Abjad."""
@@ -55,13 +60,13 @@ class Partition:
                 duration_rational = abjad.Duration(1)
             else:
                 duration_rational = abjad.Duration(duration)
-            if note_name == '1':  # Handle rest
+            if note_name == 'N':  # Handle rest
                 abjad_note = abjad.Rest(duration_rational)
                 treble_notes.append(abjad_note)
                 bass_notes.append(abjad.Skip(duration_rational))
             else:
                 # Convert note name to abjad format
-                note = note_name[:-1].lower()
+                note : str = note_name[:-1].lower()
                 if '#' in note or "♯" in note:
                     note = note.replace('#', 's')
                     note = note.replace('♯', 's')
@@ -96,3 +101,8 @@ class Partition:
     def save_score(self, output_path):
         """Exporte la partition en format LilyPond."""
         abjad.persist.as_ly(self.score, output_path)
+
+
+
+if __name__ == "__main__":
+    pass

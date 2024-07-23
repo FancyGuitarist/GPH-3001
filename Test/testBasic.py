@@ -62,7 +62,7 @@ class TestMono(unittest.TestCase):
     def test_custom_hmm(self):
         audio_signal = AudioSignal(audio_path=AUDIO_PATH)
         mono = Mono(audio_signal.y_harmonic, audio_signal.y_percussive)
-        resolved_states = mono.pianoroll[1]
+        resolved_states = mono.decoded_states
         self.assertEqual(len(resolved_states), mono.priors.shape[1])
 
 class TestPostprocessor(unittest.TestCase):
@@ -94,7 +94,7 @@ class TestDirtyData(unittest.TestCase):
         m = Mono(audio_signal.y_harmonic, audio_signal.y_percussive)
         monophonic_simple_notation = m.simple_notation
 
-        note_names = ["1", 'C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4']
+        note_names = ["N", 'C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4']
         time = [2.577, 0.51, 0.46, 0.48, 0.487, 0.51, 0.487, 0.44, 1.416]
         for j, event in enumerate(monophonic_simple_notation):
             self.assertEqual(event[0], note_names[j])

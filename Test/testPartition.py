@@ -13,7 +13,7 @@ class TestPartition(unittest.TestCase):
             ('C4', 0, 4),  # Whole note
             ('D4', 4.0, 2),  # Half note
             ('E4', 6, 1),  # Quarter note
-            ('1', 7, 1)   # Rest
+            ('N', 7, 1)   # Rest
         ]
         self.tempo = 60
         self.partition = Partition(self.simple_notation, self.tempo)

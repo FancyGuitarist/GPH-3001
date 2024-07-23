@@ -73,6 +73,7 @@ pip install -r requirements.txt
 }
 verify_installation
 if [ $? -eq 1 ]; then
+    echo "verify_installation à échoué"
     exit 1
 fi
 
