@@ -11,12 +11,12 @@ import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from MusicRetrieval import  AudioParams, AudioSignal
-from bivariate import Pseudo2D
+from Pseudo2D import Pseudo2D
 
 
 params = AudioParams()
-first_10_midi_files = glob('/Users/antoine/Desktop/GPH/E2024/PFE/Validation/maestro-v1.0.0/2017/*.midi')[:10]
-mid = pm.PrettyMIDI(first_10_midi_files[0])
+#first_10_midi_files = glob('/Users/antoine/Desktop/GPH/E2024/PFE/Validation/maestro-v1.0.0/2017/*.midi')[:10]
+#mid = pm.PrettyMIDI(first_10_midi_files[0])
 
 test_1_path = "/Users/antoine/Desktop/GPH/E2024/PFE/Validation/maestro-v1.0.0/2017/MIDI-Unprocessed_041_PIANO041_MID--AUDIO-split_07-06-17_Piano-e_1-01_wav--1.midi"
 
@@ -27,23 +27,33 @@ test_1_path = "/Users/antoine/Desktop/GPH/E2024/PFE/Validation/maestro-v1.0.0/20
 def convert_midi_to_wav(midi_path):
     """create a temporary file to save the audio generated from the midi file and delete it afterwards"""
     name = midi_path.split("/")[-1].split(".")[0]+".wav"
-    if os.path.exists(name):
-        return name
-    os.system(f"fluidsynth -ni /Users/antoine/Desktop/GPH/E2024/PFE/Validation/TimGM6mb.sf2 {midi_path} -F {name} -r 44100  2> /dev/null")
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if os.path.exists(current_dir + "/" + name):
+        return current_dir + "/" + name
+    os.system(f"fluidsynth -ni {current_dir}/TimGM6mb.sf2 {midi_path} -F {name} -r 44100  2> /dev/null")
     return name
 
-def load_and_clean(midi_path):
+def benchmark(midi_path, show_piano=None, clean=False):
     name = convert_midi_to_wav(midi_path)
     audio = AudioSignal(name)
     pseudo = Pseudo2D(audio)
+
+    # optimize the parameters for polyphonic piano
+    pseudo.gamma = 6_700
+    pseudo.std_threshold = 1e-8
+
     test_result, piano = pseudo.multipitch_estimate()
-    score = benchmark(midi_path, pseudo, hop_length=audio.hop_length, sampling_rate=audio.sampling_rate)
+    piano = np.roll(piano, -2, axis=1)
+
+    score = compare(midi_path, pseudo, hop_length=audio.hop_length, sampling_rate=audio.sampling_rate, show_piano=show_piano)
     f_measure = f(score['Precision'], score["Recall"])
     score['F-measure'] = f_measure
+    if clean:
+        os.system(f"rm {name}")
     return score
 
 
-def benchmark(midi_file_path, pseudo: Pseudo2D ,hop_length = params.hop_length, sampling_rate = params.sampling_rate,show_piano=None):
+def compare(midi_file_path, pseudo: Pseudo2D ,hop_length = params.hop_length, sampling_rate = params.sampling_rate,show_piano=None):
     mid = pm.PrettyMIDI(midi_file_path)
     test_result, piano = pseudo.multipitch_estimate()
     hop_time = (hop_length/sampling_rate)
@@ -67,7 +77,7 @@ def benchmark(midi_file_path, pseudo: Pseudo2D ,hop_length = params.hop_length, 
         fig.tight_layout()
 
         fig.set_size_inches(12, 6)
-        plt.legend(['Legend','1;',"dick"],loc='upper right')
+        #plt.legend(['Legend','1;',"test"],loc='upper right')
 
         plt.show()
     scores = evaluate(estimate_time,ground_truth,estimate_time,test_result)
@@ -77,5 +87,5 @@ def benchmark(midi_file_path, pseudo: Pseudo2D ,hop_length = params.hop_length, 
 
 
 if __name__ == "__main__":
-    score = load_and_clean(test_1_path)
+    score = benchmark(test_1_path,show_piano=None)
     print(score)

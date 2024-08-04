@@ -42,42 +42,42 @@ class TestAudioParams(unittest.TestCase):
         self.assertEqual(audio_params.frame_length, 2048)
         self.assertEqual(audio_params.hop_length, 512)
         self.assertEqual(audio_params.note_min.string, 'E2')
-        self.assertEqual(audio_params.note_max.string, 'E6')
+        self.assertEqual(audio_params.note_max.string, 'C7')
 
 class TestAudioSignal(unittest.TestCase):
     def test_audio_signal_initialization(self):
-        audio_signal = AudioSignal(audio_path=AUDIO_PATH)
+        audio_signal = AudioSignal(AUDIO_PATH)
         self.assertEqual(audio_signal.sampling_rate, 22050)
         self.assertGreater(len(audio_signal.y), 0)
 
 class TestPrior(unittest.TestCase):
     def test_prior_probability(self):
-        audio_signal = AudioSignal(audio_path=AUDIO_PATH)
-        priors = Mono(audio_signal.y_harmonic, audio_signal.y_percussive).priors
+        audio_signal = AudioSignal(AUDIO_PATH)
+        priors = Mono(audio_signal).priors
         n_note = audio_signal.n_notes
         state_size = 2 * n_note + 1
         self.assertEqual(priors.shape[0], state_size)
 
 class TestMono(unittest.TestCase):
     def test_custom_hmm(self):
-        audio_signal = AudioSignal(audio_path=AUDIO_PATH)
-        mono = Mono(audio_signal.y_harmonic, audio_signal.y_percussive)
+        audio_signal = AudioSignal(AUDIO_PATH)
+        mono = Mono(audio_signal)
         resolved_states = mono.decoded_states
         self.assertEqual(len(resolved_states), mono.priors.shape[1])
 
 class TestPostprocessor(unittest.TestCase):
     def test_postprocessor_simple_notation(self):
-        audio_signal = AudioSignal(audio_path=AUDIO_PATH)
-        m = Mono(audio_signal.y_harmonic, audio_signal.y_percussive)
-        simple_notation = m.simple_notation
+        audio_signal = AudioSignal(AUDIO_PATH)
+        m = Mono(audio_signal)
+        simple_notation = m.simple_notation(m.decoded_states)
         self.assertIsInstance(simple_notation, list)
         self.assertGreater(len(simple_notation), 0)
 
 class TestCleanData(unittest.TestCase):
     def test_simple_notation(self):
-        audio_signal = AudioSignal(audio_path=AUDIO_PATH)
-        mono = Mono(audio_signal.y_harmonic, audio_signal.y_percussive)
-        monophonic_simple_notation = mono.simple_notation
+        audio_signal = AudioSignal(AUDIO_PATH)
+        mono = Mono(audio_signal)
+        monophonic_simple_notation = mono.simple_notation(mono.decoded_states)
 
         note_names = ['C4', 'E4', 'G4', 'C5']
         note_time = 0.5
@@ -90,9 +90,9 @@ class TestCleanData(unittest.TestCase):
 class TestDirtyData(unittest.TestCase):
     def test_simple_notation(self):
         DIRTY_AUDIO_PATH = 'Test/C_scale_dirty.wav'
-        audio_signal = AudioSignal(audio_path=DIRTY_AUDIO_PATH)
-        m = Mono(audio_signal.y_harmonic, audio_signal.y_percussive)
-        monophonic_simple_notation = m.simple_notation
+        audio_signal = AudioSignal(DIRTY_AUDIO_PATH)
+        m = Mono(audio_signal)
+        monophonic_simple_notation = m.simple_notation(m.decoded_states)
 
         note_names = ["N", 'C3', 'D3', 'E3', 'F3', 'G3', 'A3', 'B3', 'C4']
         time = [2.577, 0.51, 0.46, 0.48, 0.487, 0.51, 0.487, 0.44, 1.416]

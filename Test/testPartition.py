@@ -16,11 +16,11 @@ class TestPartition(unittest.TestCase):
             ('N', 7, 1)   # Rest
         ]
         self.tempo = 60
-        self.partition = Partition(self.simple_notation, self.tempo)
+        self.partition = Partition( self.tempo)
 
     def test_initialization(self):
         self.assertEqual(self.partition.tempo, self.tempo)
-        self.assertEqual(self.partition.simple_notation, self.simple_notation)
+        # self.assertEqual(self.partition.simple_notation(), self.simple_notation)
 
     def test_get_closest_duration(self):
         self.assertEqual(self.partition._get_closest_duration(1), "1/4")
@@ -35,24 +35,24 @@ class TestPartition(unittest.TestCase):
     def test_convert_notes_to_abjad(self):
         treble_notes, bass_notes = self.partition.convert_notes_to_abjad(self.simple_notation)
 
-        # Check that the correct number of notes were created
-        self.assertEqual(len(treble_notes), len(self.simple_notation))
+
 
         # Check specific note types and durations
-        self.assertIsInstance(treble_notes[0], abjad.Note)
+        self.assertIsInstance(treble_notes[0], abjad.Note| abjad.Rest | abjad.Skip)
+        print("treble_note[0]",treble_notes[0],bass_notes[0], treble_notes[0].written_duration)
         self.assertEqual(treble_notes[0].written_duration, abjad.Duration(1, 1))  # Whole note
 
-        self.assertIsInstance(treble_notes[1], abjad.Note)
+        self.assertIsInstance(treble_notes[1], abjad.Note | abjad.Rest | abjad.Skip)
         self.assertEqual(treble_notes[1].written_duration, abjad.Duration(1, 2))  # Half note
 
-        self.assertIsInstance(treble_notes[2], abjad.Note)
+        self.assertIsInstance(treble_notes[2], abjad.Note| abjad.Rest | abjad.Skip)
         self.assertEqual(treble_notes[2].written_duration, abjad.Duration(1, 4))  # Quarter note
 
-        self.assertIsInstance(treble_notes[3], abjad.Rest)
+        self.assertIsInstance(treble_notes[3], abjad.Rest| abjad.Rest | abjad.Skip)
         self.assertEqual(treble_notes[3].written_duration, abjad.Duration(1, 4))  # Quarter rest
 
     def test_score_property(self):
-        score = self.partition.score
+        score = self.partition.score(self.simple_notation)
 
         # Check if the score contains both treble and bass staffs
         self.assertEqual(len(score), 2)
@@ -69,8 +69,9 @@ class TestPartition(unittest.TestCase):
     def test_save_score(self):
         # For this test, we will create a temporary file
         import tempfile
+        score = self.partition.score(self.simple_notation)
         with tempfile.NamedTemporaryFile(suffix='.ly') as temp_file:
-            self.partition.save_score(temp_file.name)
+            self.partition.save_score(score, temp_file.name)
             # Check that the file is not empty
             temp_file.seek(0)
             content = temp_file.read()

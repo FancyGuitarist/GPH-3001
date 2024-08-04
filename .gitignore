@@ -3,7 +3,6 @@
 .ipynb_checkpoints
 all-samples
 *.ly
-*.wav
 venv
 SandBox.ipynb
 __pycache__
@@ -19,3 +18,4 @@ Test/coverage_html
 Validation/maestro*
 Validation/nsynth*
 Notes/.obsidian
+.Mono_explication.md

@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 # TODO utiliser la librairy HMMlearn pour implémenter un modèle HMM
 # from hmmlearn import hmm
 # h = hmm.Categorical()
-
+import warnings
+warnings.filterwarnings("ignore")
 """
 Le model suivant est basé sur le travail de Tiago Fernandes Tavares et son projet audio_to_midi
 
@@ -27,6 +28,11 @@ class Note:
             raise ValueError("Invalid octave, please provide an octave between 0 and 8")
         self.name : str = name
         self.octave : int = octave
+    @classmethod
+    def from_midi(cls, midi: int):
+        note = librosa.midi_to_note(midi)
+        self = cls(note[:-1], int(note[-1]))
+        return self
     @property
     def string(self) -> str:
         return f"{self.name}{self.octave}"
@@ -68,15 +74,16 @@ class AudioSignal(AudioParams):
         if type(audio) == np.ndarray:
             self.y = audio
         elif type(audio) == str:
-            self.y, _ = librosa.load(audio,sr=self.sampling_rate)
+            self.y, _ = librosa.load(audio, sr=self.sampling_rate)
         else:
             raise ValueError("Audio must be a path to a file or a numpy array")
         self.y_harmonic = librosa.effects.harmonic(self.y)
-        #self.y_percussive = librosa.effects.percussive(self.y)
-        #tempo =  librosa.feature.tempo(y=self.y_percussive, sr=self.sampling_rate, hop_length=self.hop_length)
-        #self.tempo = tempo[0] if type(tempo) == np.ndarray else tempo
+        self.y_percussive = librosa.effects.percussive(self.y)
+        tempo =  librosa.feature.tempo(y=self.y_percussive, sr=self.sampling_rate, hop_length=self.hop_length)
+        self.tempo = tempo[0] if type(tempo) == np.ndarray else tempo
 
 class MonoParams(AudioParams):
+
     """"
     pitch_acc : float, between 0 and 1
         Probability (estimated) that the pitch estimator is correct.
@@ -119,10 +126,10 @@ class Mono(MonoParams):
 
 
     """
-    def __init__(self, audio_harmonic, audio_percussive):
+    def __init__(self, audio: AudioSignal):
         super(Mono, self).__init__()
-        self.audio_harmonic = audio_harmonic
-        self.audio_percussive = audio_percussive
+        self.audio_harmonic = audio.y_harmonic
+        self.audio_percussive = audio.y_percussive
         self.pitch, self.voiced_flag, self.voiced_prob = self.pyin()
         self.tuning = librosa.pitch_tuning(self.pitch)
 
@@ -141,6 +148,7 @@ class Mono(MonoParams):
 
     def no_hmm(self):
         pitch, voiced_flag, voiced_prob = (self.pitch, self.voiced_flag, self.voiced_prob)
+
         f0_ = np.round(librosa.hz_to_midi(pitch - self.tuning)).astype(int)
         # make a pinaoroll with the notes
         pianoroll = np.zeros((self.n_notes, len(pitch)))
@@ -278,9 +286,7 @@ class Mono(MonoParams):
 
         Parameters
         ----------
-        self.silence : list of 0 and 1 representing on/off of silence state
-        self.onset : list of string (e.g., "A#4") or False representing onset state of a certain note pitch
-        self.sustain : list of string (e.g., "A#4") or False representing sustain state of a certain note pitch
+        result : np.array of note as string format e.g. 'C4', 'N'
 
         Returns
         -------
@@ -295,5 +301,13 @@ class Mono(MonoParams):
 
 if __name__ == "__main__":
     audio = AudioSignal("song&samples/gamme_C.wav")
-    mono = Mono(audio.y_harmonic, audio.y_percussive)
+    mono = Mono(audio)
+    piano = mono.no_hmm()
+    notes = []
+    for t in range(piano.shape[1]):
+        if np.any(piano[:,t]):
+            notes += librosa.midi_to_note(np.argwhere(piano[:,t]) + mono.note_min.midi)
+        else:
+            notes.append("N")
+    simple_notation = mono.simple_notation(notes)
     mono.show_piano_roll()

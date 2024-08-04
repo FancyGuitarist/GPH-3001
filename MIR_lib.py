@@ -5,6 +5,7 @@ from enum import Enum
 from os import truncate
 import numpy as np
 from numpy.lib.twodim_base import diag
+
 class Situation(Enum):
     SILENCE_to_SILENCE = 0
     SILENCE_to_ONSET = 1
@@ -96,5 +97,8 @@ def build_transition_matrix( n_notes: int, prob_stay_note=0.9, prob_stay_silence
                 case Situation.SUSTAIN_to_ONSET:
                     transition_matrix[i,j] = (1 - prob_stay_note)/(n_notes+1)
     return transition_matrix
+
+
+
 if __name__ == "__main__":
     print(build_transition_matrix(3))
