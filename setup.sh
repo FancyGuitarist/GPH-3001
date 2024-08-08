@@ -33,17 +33,6 @@ else
     fi
 fi
 
-if brew list | grep "^virtualenv$"; then
-    echo "virtualenv est déjà installé."
-else
-    echo "virtualenv n'est pas installé. Veuiller l'installer.\n  brew install virtualenv"
-        exit 1
-       if [ $? -eq 0 ]; then
-        echo "virtualenv a été installé avec succès."
-    else
-        echo "L'installation de virtualenv a échoué."
-    fi
-fi
 
 # Vérifier si Python 3.11 est installé
 if ! command -v python3.11 &> /dev/null;
@@ -79,7 +68,7 @@ fi
 
 complete_setup
 if [ $? -eq 0 ]; then
-    echo "Prérequis complété, vous pouvez désormais executer start.sh <chemin/vers/fichier/audio.wav>"
+    echo "Prérequis complété, vous pouvez désormais executer python mir --help"
 else
     "setup.sh à échoué"
 fi

@@ -15,7 +15,8 @@ output
 *.ipynb
 pyproject.toml
 Test/coverage_html
-Validation/maestro*
-Validation/nsynth*
+mir/Validation/maestro*
+mir/Validation/nsynth*
+*.zip
 Notes/.obsidian
 .Mono_explication.md
