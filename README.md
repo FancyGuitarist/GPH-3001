@@ -6,13 +6,13 @@ sh setup.sh
 source venv/bin/activate
 ```
 ```
-python main.py -h
+python main.py --help
 ```
 
 ## exemple d'utilisation
 *Roule les test de performance de l'analyse polyphonic sur le dataset MAESTRO*
 ```
-python main.py polyphonic -b Validation/polyphonic_piano_test.midi
+python mir polyphonic -b mir/Validation/polyphonic_piano_test.midi
 ```
 *Analyse Monophonic d'un enregistrement préexistant*
 ```
