@@ -1,25 +1,34 @@
-# instruction
-```
-sh setup.sh
-```
-```
-source venv/bin/activate
-```
-```
-python mir --help
-```
 
-## exemple d'utilisation
-*Roule les test de performance de l'analyse polyphonic sur le dataset MAESTRO*
-```
+# Instructions
+
+1. **Set up the environment**:
+   ```bash
+   sh setup.sh
+   ```
+
+2. **Activate the virtual environment**:
+   ```bash
+   source venv/bin/activate
+   ```
+
+3. **Check available commands**:
+   ```bash
+   python mir --help
+   ```
+
+## Example Usage
+
+### Run performance tests for polyphonic analysis on the MAESTRO dataset
+```bash
 python mir polyphonic -b mir/Validation/polyphonic_piano_test.midi
 ```
-*Analyse Monophonic d'un enregistrement préexistant*
-```
+
+### Perform monophonic analysis on a pre-existing recording
+```bash
 python mir monophonic -f song&samples/gamme_C.wav
 ```
 
-*identification des accords d'un enregistrement préexistant*
-```
+### Identify chords in a pre-existing recording
+```bash
 python mir chord-only -pr -f song&samples/polyphonic.wav
 ```
