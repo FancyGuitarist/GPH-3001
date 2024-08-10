@@ -21,5 +21,5 @@ python mir monophonic -f /Users/antoine/Desktop/GPH/E2024/PFE/song&samples/gamme
 
 *identification des accords d'un enregistrement préexistant*
 ```
-python mir chord-only -f -pr /Users/antoine/Desktop/GPH/E2024/PFE/song&samples/polyphonic.wav
+python mir chord-only -pr -f /Users/antoine/Desktop/GPH/E2024/PFE/song&samples/polyphonic.wav
 ```
