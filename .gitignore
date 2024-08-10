@@ -8,7 +8,6 @@ SandBox.ipynb
 __pycache__
 .ipynb_checkpoint
 pyrightconfig.json
-rec_unlimited.py
 .coverage
 coverage_html
 output
