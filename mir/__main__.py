@@ -40,7 +40,7 @@ def create_parser():
     for p in [mono, poly, chord]:
         piano_debug_group = p.add_mutually_exclusive_group(required=False)
         piano_debug_group.add_argument('-pr', '--piano-roll', action='store_true', help='Show piano roll visualization')
-        piano_debug_group.add_argument('-d', '--debug', type=float, help='debug a certain time frame, will show the cross-correlation with the template matrix and pseudo2D spectrum', metavar='<time in seconds>')
+
         input_group = p.add_mutually_exclusive_group(required=True)
 
         if p == poly:
@@ -51,6 +51,7 @@ def create_parser():
                 Standard deviation threshold used to determine if a frame is silenced or not,
                 1e-8 work best for polyphonic piano while 1e-2 work best for noisy guitar recording
                 ''', metavar='<float>')
+            piano_debug_group.add_argument('-d', '--debug', type=float, help='debug a certain time frame, will show the cross-correlation with the template matrix and pseudo2D spectrum', metavar='<time in seconds>')
             p.set_defaults(gamma=50, standard_deviation=1e-2, threshold=0.55)
 
         input_group.add_argument("-u", '--url', type=str, help='URL to the music file')
@@ -101,6 +102,9 @@ def main():
         import time
         audio = AudioSignal(audio_path)
         partition = Partition(audio.tempo)
+    else:
+        print("No input provided")
+        sys.exit(1)
 
 
     if args.Modes == "polyphonic":
@@ -137,6 +141,12 @@ def main():
 
 
     else:
+        if args.piano_roll:
+            print("Monophonic mode does not support piano roll visualization")
+            sys.exit(1)
+        if args.debug:
+            print("Monophonic mode does not support debug")
+            sys.exit(1)
         print("Monophonic mode enabled")
         mono = Mono(audio)
         result = mono.decoded_states
