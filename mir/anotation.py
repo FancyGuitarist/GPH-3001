@@ -1,5 +1,7 @@
 
 from functools import partial
+
+from numpy.core.multiarray import ndarray
 import abjad
 import numpy as np
 import pdb;
@@ -8,9 +10,9 @@ import pdb;
 
 
 
-
 def is_almost_equal(start_of_second_note: float, end_of_first_note : float, epsilon: float):
     return  (start_of_second_note - end_of_first_note < epsilon) & (start_of_second_note - end_of_first_note > 0)
+
 def full_notes(tempo):
     quarter_note = 60 / tempo
     half_note = quarter_note * 2
@@ -33,9 +35,12 @@ def full_notes(tempo):
         ("3/8" , dotted_quarter_note), ("3/16" , dotted_eighth_note) , ("3/32" , dotted_sixteenth_note)]
     total_note = full_note + dotted_note
     return total_note
+
+
 class Partition:
     def __init__(self,  tempo):
         self.tempo = tempo
+        self.duration_mapping_dict = dict(full_notes(self.tempo))
 
     def _get_closest_duration(self, duration):
         """
@@ -51,52 +56,46 @@ class Partition:
         best_fit : str -> 1/4, 1/8, 1/16, 1/32 ... etc
         """
         total_note = full_notes(self.tempo)
-
         value_of_best_fit = lambda duration:\
             min(total_note, key = lambda x: np.abs(duration - x[1]))
         best_fit = value_of_best_fit(duration)[0]
-
         return best_fit
 
-    def _group_overlapping_notes(self, simple_notation, epsilon=0.05):
-        # Sort the data by start frame
-        simple_notation.sort(key=lambda x: x[1])
+    # def _group_overlapping_notes(self, simple_notation, epsilon=0.05):
+    #     # Sort the data by start frame
+    #     simple_notation.sort(key=lambda x: x[1])
 
-        # List to store grouped notes
-        grouped_notes = []
+    #     # List to store grouped notes
+    #     grouped_notes = []
 
-        # Initialize the first group with the first note
-        current_group = [simple_notation[0]]
+    #     # Initialize the first group with the first note
+    #     current_group = [simple_notation[0]]
 
-        # Iterate through the sorted list
-        for i in range(1, len(simple_notation)):
-            note, start, duration = simple_notation[i]
-            # Check if the current note overlaps with the last note in the current group
-            last_note, last_start, last_duration = current_group[-1]
+    #     # Iterate through the sorted list
+    #     for i in range(1, len(simple_notation)):
+    #         note, start, duration = simple_notation[i]
+    #         # Check if the current note overlaps with the last note in the current group
+    #         last_note, last_start, last_duration = current_group[-1]
 
-            if start < last_start + last_duration - epsilon:
-                # If they overlap, add the current note to the current group
-                current_group.append(simple_notation[i])
-            else:
-                # If they don't overlap, save the current group and start a new group
-                grouped_notes.append(current_group)
-                current_group = [simple_notation[i]]
-        grouped_notes.append(current_group)
+    #         if start < last_start + last_duration - epsilon:
+    #             # If they overlap, add the current note to the current group
+    #             current_group.append(simple_notation[i])
+    #         else:
+    #             # If they don't overlap, save the current group and start a new group
+    #             grouped_notes.append(current_group)
+    #             current_group = [simple_notation[i]]
+    #     grouped_notes.append(current_group)
 
-        return grouped_notes
+    #     return grouped_notes
+
 
     def _get_melody_chords_estimate(self, simple_notation, extract=False):
         """
-        function to estimate chords from simple notation by :
-
-            1. Grouping overlapping notes.
-
-            2. Estimating the chord from the grouped notes by comparing with mean and standard deviation of start time and duration.
-
+        Convert note/chord name to abjad str format
         Parameters
         ----------
         simple_notation : list[tuples(note: str, start_time: float, duration: float)]
-            list of tuples containing note, start time and duration
+            list of tuples containing note/chord start time and duration
         extract : bool
             if True, extract the melody notes from the chords in tuple format.
 
@@ -105,47 +104,55 @@ class Partition:
         melody + chord_estimate : list[tuples(note | chord: str of abjad format, start_time: float, duration: float))]
             list of grouped simple notation tuples present in the chords in abjad notation string format.
         """
-        grouped_notes = self._group_overlapping_notes(simple_notation)
+        #grouped_notes = self._group_overlapping_notes(simple_notation)
         note_name_to_abjad_format = partial(self.note_name_to_abjad_format, join=True)
         chord_estimate : list[tuple[str,float,float]]  = []
         melody : list[tuple[str,float,float]]  = []
-        dictionnary_of_time_repr = dict(full_notes(self.tempo))
-
-        for group in grouped_notes:
-
-            g = np.array(group)
-            (start_time , duration) = g.T[1:,...].astype(float)
-            mu_duration, sigma_duration = np.mean(duration),np.std(duration)
-            mu_start_time, sigma_start_time = np.mean(start_time),np.std(start_time)
-            # grab the notes where the duration and start_time are in sigma range of the mean
-            is_chord = (np.abs(duration - mu_duration) < mu_duration/2)# & (np.abs(start_time - mu_start_time) < sigma_start_time*2)
-            in_chord = g[is_chord]
-
-            out_chord = g[~is_chord]
-            for note, start, duration in out_chord:
-                # modify note to abjad notation
-                melody.append((note_name_to_abjad_format(note), float(start), float(duration)))
-
-            if len(in_chord) > 1: # verify if any chord are present
-                #print("in chord",in_chord)
-                # estimate start time and duration of the chord
-                start_time: float = np.min(in_chord.T[1].astype(float)).astype(float)
-                duration: float = np.max(in_chord.T[2].astype(float)).astype(float)
-                # convert the chord to abjad format
-                iterable = ' '.join(list(map(note_name_to_abjad_format, in_chord.T[0].astype(str) )))
+        dictionnary_of_time_repr = self.duration_mapping_dict
+        res = []
+        for note_or_chord, start, duration in simple_notation:
+            if len(note_or_chord) > 1: # if its a chord
+                iterable = ' '.join(list(map(note_name_to_abjad_format, note_or_chord )))
                 # print("iterable : ", iterable)
-                simple_chord_notation = (f"<{iterable}>", start_time, duration)
+                simple_chord_notation = (f"<{iterable}>", start, duration)
+            else:
+                simple_chord_notation = (note_name_to_abjad_format(*note_or_chord), start, duration)
+            res.append(simple_chord_notation)
+        return res
+        # for group in grouped_notes:
 
-                chord_estimate.append(simple_chord_notation)
-        #breakpoint()
-        if extract:
-            return melody, chord_estimate
-        else:
-            # sorted by start time
-            # print("melody + chord_estimate melody, chord estimate:", melody +chord_estimate)
-            all = melody + chord_estimate
-            res = sorted(all, key=lambda x: x[1])
-            return res
+        #     g = np.array(group)
+        #     (start_time , duration) = g.T[1:,...].astype(float)
+        #     mu_duration, sigma_duration = np.mean(duration),np.std(duration)
+        #     mu_start_time, sigma_start_time = np.mean(start_time),np.std(start_time)
+        #     # grab the notes where the duration and start_time are in sigma range of the mean
+        #     is_chord = (np.abs(duration - mu_duration) < mu_duration/2)# & (np.abs(start_time - mu_start_time) < sigma_start_time*2)
+        #     in_chord = g[is_chord]
+
+        #     out_chord = g[~is_chord]
+        #     for note, start, duration in out_chord:
+        #         # modify note to abjad notation
+        #         melody.append((note_name_to_abjad_format(note), float(start), float(duration)))
+
+        #     if len(in_chord) > 1: # verify if any chord are present
+        #         #print("in chord",in_chord)
+        #         # estimate start time and duration of the chord
+        #         start_time: float = np.min(in_chord.T[1].astype(float)).astype(float)
+        #         duration: float = np.max(in_chord.T[2].astype(float)).astype(float)
+        #         # convert the chord to abjad format
+        #         iterable = ' '.join(list(map(note_name_to_abjad_format, in_chord.T[0].astype(str) )))
+        #         # print("iterable : ", iterable)
+        #         simple_chord_notation = (f"<{iterable}>", start_time, duration)
+
+        #         chord_estimate.append(simple_chord_notation)
+        # if extract:
+        #     return melody, chord_estimate
+        # else:
+        #     # sorted by start time
+        #     # print("melody + chord_estimate melody, chord estimate:", melody +chord_estimate)
+        #     all = melody + chord_estimate
+        #     res = sorted(all, key=lambda x: x[1])
+        #     return res
 
 
     def note_name_to_abjad_format(self, note_name, join=False) -> str | tuple[str, str]:
@@ -157,6 +164,7 @@ class Partition:
         if '#' in note or "♯" in note:
             note = note.replace('#', 's')
             note = note.replace('♯', 's')
+        # breakpoint()
         octave = int(note_name[-1])
         octave_adjustment = octave - 3
         if octave_adjustment >= 1:
@@ -177,6 +185,67 @@ class Partition:
 
         return abjad.Duration(closest_dur)
 
+    def sequential_correction(self, simp_notation_vec, i, smallest_duration=None):
+        """
+        Correct the sequential notes or chords in the simple notation
+        by adding a rest in between if there is a gap.
+        """
+        if smallest_duration is None:
+           epsilon_as_float = 0.01
+        else:
+            # samllest duration needs to be a str in the form of "1/32"
+            epsilon_as_float = self.duration_mapping_dict[smallest_duration]
+
+        if (len(simp_notation_vec) <= i + 1): # early return if last note
+            return [simp_notation_vec[i]]
+
+        start_of_second_note = simp_notation_vec[i+1][1] # start of the second note
+        end_of_first_note = simp_notation_vec[i][2] + simp_notation_vec[i][1] # end of the first note
+
+        if not is_almost_equal(start_of_second_note, end_of_first_note, epsilon=epsilon_as_float):
+            if start_of_second_note-end_of_first_note > 0:
+                return [simp_notation_vec[i] , ("N",
+                    end_of_first_note,
+                    start_of_second_note-end_of_first_note)]
+            else:
+                return [simp_notation_vec[i]]
+        else:
+            return [simp_notation_vec[i]]
+
+    def is_bass_treble(self, simple_notation_unit):
+        """
+        Determine if the note or chord is in the bass or treble staff.
+
+        Parameters:
+            simple_notation_unit : tuple(note | chord, start_time, duration)
+
+        return : str = "bass" | "treble"
+        """
+        #if simple_notation_unit[0].__contains__('<'):
+            # is already in abjad format
+        if "'" in simple_notation_unit[0]:
+            return "treble"
+        else:
+            return "bass"
+    def separate_treble_bass(self, simple_notation_vec: list[tuple[str, float, float]]):
+        """
+        Seperate the treble and bass staff from the simple notation unit.
+
+        Parameters:
+            simple_notation_unit : tuple(note | chord, start_time, duration)
+        """
+        treble, bass = [], []
+        # seperate the treble and bass
+        for i in range(len(simple_notation_vec)):
+            simple_notation_unit = simple_notation_vec[i]
+            maybe_bass_or_treb = self.is_bass_treble(simple_notation_unit)
+            if maybe_bass_or_treb == "treble":
+                treble.append(simple_notation_unit)
+            elif maybe_bass_or_treb == "bass" :
+                bass.append(simple_notation_unit)
+            else:
+                raise ValueError("The note or chord is neither in the bass nor treble staff.")
+        return treble, bass
     def extract_bass_treble_staff(self, simple_notation_vec: list[tuple[str, float, float]]) -> tuple[list[tuple[str, float, float]], list[tuple[str, float, float]]]:
 
         """
@@ -192,87 +261,15 @@ class Partition:
             bass_staff : list[tuple()]
 
         """
-        duration_mapping_dict = dict(full_notes(self.tempo))
-        def sequential_correction(simp_notation_vec, i, smallest_duration="1/32"):
-            """
-            Correct the sequential notes or chords in the simple notation
-            by adding a rest in between if there is a gap.
-            """
-            epsilon_as_float = duration_mapping_dict[smallest_duration]
-            # print("in sequential correction()")
-            if (len(simp_notation_vec) <= i + 1): # early return if last note
-
-                return [simp_notation_vec[i]]
-            # print("i",i,"len(simp_notation)",len(simp_notation_vec))
-
-            start_of_second_note = simp_notation_vec[i+1][1] # start of the second note
-            end_of_first_note = simp_notation_vec[i][2] + simp_notation_vec[i][1] # end of the first note
-            # print("is_almost_equalt line 200",is_almost_equal(
-            #    print("Line 212: gap in between the note should add a N like this",("N",
-                    # simple_notation_vec[i][2] + simple_notation_vec[i][1],
-                    # simple_notation_vec[i+1][1] - simple_notation_vec[i][2] + simple_notation_vec[i][1]))
-                # gap in between notes | chords, need a rest in between
-            if not is_almost_equal(start_of_second_note, end_of_first_note, epsilon=epsilon_as_float):
-                if start_of_second_note-end_of_first_note > 0:
-                    return [simp_notation_vec[i] , ("N",
-                        end_of_first_note,
-                        start_of_second_note-end_of_first_note)]
-                else:
-                    return [simp_notation_vec[i]]
-            else:
-                return [simp_notation_vec[i]]
-
-
-        def is_bass_treble(simple_notation_unit):
-            """
-            Determine if the note or chord is in the bass or treble staff.
-
-            Parameters:
-                simple_notation_unit : tuple(note | chord, start_time, duration)
-
-            return : str = "bass" | "treble"
-            """
-
-            #if simple_notation_unit[0].__contains__('<'):
-                # is already in abjad format
-            if "'" in simple_notation_unit[0]:
-                return "treble"
-            else:
-                return "bass"
-
-
-
-        def seperate_treble_bass(simple_notation_vec: list[tuple[str, float, float]]):
-            """
-            Seperate the treble and bass staff from the simple notation unit.
-
-            Parameters:
-                simple_notation_unit : tuple(note | chord, start_time, duration)
-            """
-            treble, bass = [], []
-            # seperate the treble and bass
-            for i in range(len(simple_notation_vec)):
-                simple_notation_unit = simple_notation_vec[i]
-                maybe_bass_or_treb = is_bass_treble(simple_notation_unit)
-                if maybe_bass_or_treb == "treble":
-                    treble.append(simple_notation_unit)
-                elif maybe_bass_or_treb == "bass" :
-                    bass.append(simple_notation_unit)
-                else:
-                    raise ValueError("The note or chord is neither in the bass nor treble staff.")
-            return treble, bass
-
-        treb, bass = seperate_treble_bass(simple_notation_vec)
-        # print("treb, bass: line 260", treb, bass)
-
+        treb, bass = self.separate_treble_bass(simple_notation_vec)
         new_treb, new_bass = [], []
         if treb:
             for i in range(len(treb)):
-                temp = sequential_correction(treb, i)
+                temp = self.sequential_correction(treb, i)
                 new_treb += temp
         if bass:
             for i in range(len(bass)):
-                b_temp = sequential_correction(bass, i)
+                b_temp = self.sequential_correction(bass, i)
                 new_bass += b_temp
         # adjust the rest at the start of the notation
         if treb:
@@ -290,7 +287,7 @@ class Partition:
 
         Parameters:
             simple_notation : list[tuple()]
-                list of tuples containing note, start time and duration
+                list of tuples containing note in abjad str format, start time and duration
             polyphonic : bool
                 if True, the simple notation is polyphonic, else monophonic
         Returns:
@@ -317,7 +314,7 @@ class Partition:
                 # print("note name",note_name)
                 if note_name == 'N':
                     res.append(abjad.Rest(duration_rational))
-                elif ' ' in note_name:
+                elif '<' in note_name:
                     chord = abjad.Chord(note_name)
                     chord.written_duration = duration_rational
                     res.append(chord)
@@ -352,6 +349,7 @@ class Partition:
                         treble_notes.append(abjad.Skip(duration_rational))
         else:
             song = self._get_melody_chords_estimate(simple_notation)
+
             # print("in convert_note_to_abjad() -> song:",song)
             treb, bass = self.extract_bass_treble_staff(song)
             # print("treb, bass line 341: ", treb,bass)
@@ -441,10 +439,10 @@ if __name__ == "__main__":
     audio = AudioSignal(sample)
     pseudo = Pseudo2D(audio)
 
-    song, piano = pseudo.multipitch_estimate()
-    pseudo.show_multipitch_estimate()
+    _, piano = pseudo.multipitch_estimate()
+    pseudo.show_multipitch_estimate(piano)
     partition = Partition(audio.tempo)
     #chord_estimate = partition._get_melody_chords_estimate(pseudo.to_simple_notation(piano))
-    sc = partition.score(pseudo.to_simple_notation(piano),polyphonic=True)
+    sc = partition.score(pseudo.to_simple_notation_v2(piano),polyphonic=True)
 
     abjad.show(sc)

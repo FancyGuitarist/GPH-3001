@@ -1,12 +1,14 @@
 import librosa
 import numpy as np
 import scipy
+import sys
+
 from Test.generate_sample_for_test import MusicGenerator
 from MusicRetrieval import AudioSignal, AudioParams, Note
 from functools import cached_property
 import matplotlib.pyplot as plt
 
-import pdb; pdb.set_trace()
+# import pdb; pdb.set_trace()
 
 class Pseudo2D(AudioParams):
     def __init__(self, audio: AudioSignal) -> None:
@@ -17,7 +19,6 @@ class Pseudo2D(AudioParams):
         self.threshold = 0.54
         self.std_threshold = 1e-3
         self.gamma = 1
-        #self.var_timeseries = np.empty(self.cqt.shape[0])
 
     @cached_property
     def cqt(self):
@@ -99,16 +100,16 @@ class Pseudo2D(AudioParams):
     @property
     def pseudo_2d(self):
 
-        res = np.array([np.outer(self.cqt[:, i], self.cqt[:, i].conj())
-            for i in range(self.cqt.shape[1])])
+        res = (np.outer(self.cqt[:, i], self.cqt[:, i].conj())
+            for i in range(self.cqt.shape[1]))
         return res
 
     def cross_correlate_diag(self, pseudo2dSpectrum, _2D=True):
         """
-        Crosscorelate the pseudo2dSpectrum with the template matrix
+        Cross-correlate the pseudo2dSpectrum with the template matrix
 
         Returns:
-            np.ndarray(1,): the cross correlation of the pseudo2dSpectrum with the template matrix
+            np.ndarray(1,): the cross-correlation of the pseudo2dSpectrum with the template matrix
 
         """
         std = np.std(pseudo2dSpectrum)
@@ -126,7 +127,8 @@ class Pseudo2D(AudioParams):
             conv = scipy.signal.correlate(
                 pseudo2dSpectrum.diagonal(),
                 self.template_matrix.diagonal(),
-                mode="same")
+                mode="same",
+                method="fft")
         else:
             conv = np.diag(
                 scipy.signal.correlate(
@@ -136,11 +138,17 @@ class Pseudo2D(AudioParams):
                     method="fft"))
         return conv
 
-    def best_estimate(self, cross_corr: np.ndarray):
+    def best_estimate(self, cross_corr: np.ndarray) -> np.ndarray:
         """
         Gives best estimate of the pitch by returning the
         index of the cross correlation that is
         in a local maxima and above the threshold.
+
+        Parameters:
+            cross_corr: np.ndarray(N,): the cross correlation of the pseudo2dSpectrum with the template matrix.
+
+        Returns:
+            indexs: np.ndarray(L,): the indexs of the cross correlation that is in a local maxima and above the threshold.
         """
 
         max_cross_corr = np.max(cross_corr)
@@ -200,13 +208,16 @@ class Pseudo2D(AudioParams):
     def to_simple_notation(self, piano_roll: np.ndarray):
         """
         Convert the piano roll to a simple notation.
+        where there is only one note in each tuple.
+        simultaneus notes will have overlapping start/duration times.
+
         """
 
         extended_roll = np.hstack((np.zeros((piano_roll.shape[0], 1), dtype=int), piano_roll, np.zeros((piano_roll.shape[0], 1), dtype=int)))
         diff = np.diff(extended_roll, axis=1)
         #del extended_roll
         starts = np.argwhere(diff == 1)
-        breakpoint()
+        # breakpoint()
         ends = np.argwhere(diff == -1)
         #del diff
         notes , start_frames = starts.T # [[note_index][frame_index]]
@@ -223,6 +234,47 @@ class Pseudo2D(AudioParams):
         )
 
         return simple_notation
+
+    def to_simple_notation_v2(self, piano_roll: np.ndarray):
+        """
+        Group simultaneous notes together in piano_roll. Making it a good choice to create chords.
+
+        Parameters
+        ----------
+        piano_roll : np.ndarray
+            piano roll matrix
+
+        Returns
+        -------
+        simple notation : list[tuple[ndarray, float, float]]
+            list of tuples where
+            the first element of the tuple is the note in standard english notation. ex: 'C4', 'A#3'
+        """
+        simple_grouped_notes = []
+        i = 0
+        last_change = 0
+        for frame in piano_roll.T:
+            if  i > 0:
+                last_frame = piano_roll.T[i-1]
+            else:
+                last_frame = piano_roll.T[i]
+            last_group = np.nonzero(last_frame)[0]
+
+            if any(frame != last_frame):
+                # save the last_change time
+                # store the value of last frame
+                if last_group.size > 0:
+                    simple_grouped_notes.append((librosa.midi_to_note(last_group + self.note_min.midi).tolist(), last_change * self.hop_time, (i-last_change)*self.hop_time))
+                last_change = i
+
+            # handle the end of the piano roll
+            if i == len(piano_roll.T) - 1:
+                current_group = np.nonzero(frame > 0)[0]
+                if current_group.size > 0:
+                    simple_grouped_notes.append((librosa.midi_to_note(current_group+ self.note_min.midi).tolist(), last_change * self.hop_time, (i-last_change)*self.hop_time))
+            i += 1
+
+        return simple_grouped_notes
     def show_multipitch_estimate(self, piano_roll: np.ndarray):
         librosa.display.specshow(
             piano_roll,
@@ -266,6 +318,6 @@ if __name__ == "__main__":
     pseudo = Pseudo2D(audio)
     from MusicRetrieval import Note
     song, piano = pseudo.multipitch_estimate()
-    pseudo.show(5)
+    pseudo.show_multipitch_estimate(piano)
     #pseudo.show_multipitch_estimate()
-    #print(pseudo.to_simple_notation(piano))
+    print(pseudo.to_simple_notation_v2(piano))

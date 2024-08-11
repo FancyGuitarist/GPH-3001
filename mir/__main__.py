@@ -124,7 +124,8 @@ def main():
 
 
 
-        simple_notation = pseudo2d.to_simple_notation(piano)
+        simple_notation = pseudo2d.to_simple_notation_v2(piano)
+        #print(simple_notation)
 
 
     elif args.Modes == "chord-only":
