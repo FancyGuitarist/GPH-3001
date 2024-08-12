@@ -88,6 +88,7 @@ def main():
         audio_path = args.file
         audio = AudioSignal(audio_path)
         partition = Partition(audio.tempo)
+
     elif args.recording:
         from rec_unlimited import record
         audio_path = record()
@@ -99,7 +100,6 @@ def main():
         with yt_dlp.YoutubeDL({'format': 'bestaudio', 'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'wav'}]}) as ydl:
             info_dict = ydl.extract_info(args.url, download=True)
             audio_path = ydl.prepare_filename(info_dict).replace('.webm', '.wav').replace('.m4a', '.wav')
-        import time
         audio = AudioSignal(audio_path)
         partition = Partition(audio.tempo)
     else:

@@ -43,8 +43,8 @@ def benchmark(midi_path, show_piano=None, clean=False):
     pseudo.std_threshold = 1e-8
 
     test_result, piano = pseudo.multipitch_estimate()
-    piano = np.roll(piano, -2, axis=1)
-
+    # piano = np.roll(piano, -3, axis=1)
+#
     score = compare(midi_path, pseudo, hop_length=audio.hop_length, sampling_rate=audio.sampling_rate, show_piano=show_piano)
     f_measure = f(score['Precision'], score["Recall"])
     score['F-measure'] = f_measure

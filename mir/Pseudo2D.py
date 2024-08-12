@@ -14,7 +14,7 @@ class Pseudo2D(AudioParams):
     def __init__(self, audio: AudioSignal) -> None:
         super().__init__()
         self.n_bins_per_octave = 36
-        self.n_harmonics = 3
+        self.n_harmonics = 5
         self.audio = audio
         self.threshold = 0.54
         self.std_threshold = 1e-3
@@ -201,39 +201,13 @@ class Pseudo2D(AudioParams):
             piano_roll[notes, index] = 1
 
         piano_roll = self.filter_short_notes(piano_roll)
+        s_pr = np.roll(piano_roll, -2, axis=1)
+
         song = [librosa.midi_to_hz(np.argwhere(
-            piano_roll[:, i]) + self.note_min.midi).flatten() for i in np.arange(piano_roll.shape[1])]
+            s_pr[:, i]) + self.note_min.midi).flatten() for i in np.arange(s_pr.shape[1])]
         return song, piano_roll
 
-    def to_simple_notation(self, piano_roll: np.ndarray):
-        """
-        Convert the piano roll to a simple notation.
-        where there is only one note in each tuple.
-        simultaneus notes will have overlapping start/duration times.
 
-        """
-
-        extended_roll = np.hstack((np.zeros((piano_roll.shape[0], 1), dtype=int), piano_roll, np.zeros((piano_roll.shape[0], 1), dtype=int)))
-        diff = np.diff(extended_roll, axis=1)
-        #del extended_roll
-        starts = np.argwhere(diff == 1)
-        # breakpoint()
-        ends = np.argwhere(diff == -1)
-        #del diff
-        notes , start_frames = starts.T # [[note_index][frame_index]]
-        #del starts
-        end_frames = ends.T[1]
-        #del ends
-        durations = end_frames - start_frames
-        simple_notation = list(
-            zip(
-                librosa.midi_to_note(self.note_min.midi + notes),
-                start_frames*self.hop_time,
-                durations*self.hop_time
-            )
-        )
-
-        return simple_notation
 
     def to_simple_notation_v2(self, piano_roll: np.ndarray):
         """
@@ -275,6 +249,7 @@ class Pseudo2D(AudioParams):
             i += 1
 
         return simple_grouped_notes
+
     def show_multipitch_estimate(self, piano_roll: np.ndarray):
         librosa.display.specshow(
             piano_roll,
@@ -291,8 +266,9 @@ class Pseudo2D(AudioParams):
     def show(self, time):
         frame = librosa.time_to_frames(
             time, sr=self.sampling_rate, hop_length=self.hop_length)
-        if frame >= len(self.pseudo_2d):
-            raise ValueError(f"Time: {time} is out of bounds with time of the audio: {librosa.frames_to_time(len(self.pseudo_2d), sr=self.sampling_rate, hop_length=self.hop_length)}")
+        p2d = list(self.pseudo_2d)
+        if frame >= len(p2d):
+            raise ValueError(f"Time: {time} is out of bounds with time of the audio: {librosa.frames_to_time(len(p2d), sr=self.sampling_rate, hop_length=self.hop_length)}")
 
         from itertools import islice
         i = list(islice(self.pseudo_2d, frame - 1, frame))[0]
