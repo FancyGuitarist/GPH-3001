@@ -1,5 +1,7 @@
 import sys
 from types import GeneratorType
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from mir.Pseudo2D import Pseudo2D
 import unittest
 from mir.MusicRetrieval import AudioSignal
@@ -41,5 +43,5 @@ class TestPseudo2D(unittest.TestCase):
 
     def test_to_simple_notation(self):
         _, piano = self.pseudo.multipitch_estimate()
-        song_simple = self.pseudo.to_simple_notation(piano)
+        song_simple = self.pseudo.to_simple_notation_v2(piano)
         self.assertIsInstance(song_simple, list)

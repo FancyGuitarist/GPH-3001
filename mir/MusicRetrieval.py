@@ -13,7 +13,6 @@ import warnings
 warnings.filterwarnings("ignore")
 """
 Le model suivant est basé sur le travail de Tiago Fernandes Tavares et son projet audio_to_midi
-
 https://github.com/tiagoft/audio_to_midi/blob/master/sound_to_midi/monophonic.py
 """
 
@@ -121,10 +120,6 @@ class Mono(MonoParams):
         p_init -> return : np.array
         simple_notation -> return : [()...()]
         pianoroll -> return : (slience, onset, sustain)
-
-
-
-
     """
     def __init__(self, audio: AudioSignal):
         super(Mono, self).__init__()

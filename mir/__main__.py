@@ -4,7 +4,16 @@ import sys
 import os
 from anotation import Partition
 import argparse
+from termcolor import colored
 
+def error(message):
+    print(colored(f'Error: {message}', 'red', attrs=['bold']))
+
+credits_to_demucs = r"""
+This project uses the Demucs model for music source separation (MSS). Thank you @Alexandre Défossez!
+
+https://github.com/adefossez/demucs
+"""
 
 class CapitalizedHelpFormatter(argparse.HelpFormatter):
     def _format_action_invocation(self, action):
@@ -31,7 +40,6 @@ class CapitalizedHelpFormatter(argparse.HelpFormatter):
 # Create the CustomArgumentParser
 def create_parser():
     parser = argparse.ArgumentParser(prog="mir", description="Automatic Music transcription & Identification for musicians.", epilog="Music is the arithmetic of sounds as optics is the geometry of light. -Claude Debussy", formatter_class=CapitalizedHelpFormatter)
-
     analysis_parser = parser.add_subparsers(title='Analysis modes', dest='Modes')
     mono = analysis_parser.add_parser('monophonic', help='Monophonic mode',formatter_class=CapitalizedHelpFormatter )
     poly = analysis_parser.add_parser('polyphonic', help='Polyphonic mode',formatter_class=CapitalizedHelpFormatter )
@@ -42,7 +50,7 @@ def create_parser():
         piano_debug_group.add_argument('-pr', '--piano-roll', action='store_true', help='Show piano roll visualization')
 
         input_group = p.add_mutually_exclusive_group(required=True)
-
+        p.add_argument('-e', '--extract', type=str, help='extract the audio of an instrument using Music Source Separation ', metavar='< guitar | piano | drum | vocal >')
         if p == poly:
             input_group.add_argument('-b','--benchmark', type=str, help='compare against ground truth from midi file', metavar='<path/to/midi/file.midi>')
             p.add_argument('-t','--threshold', type=float, help='Threshold for the detection of note in with respect to the highest correlation value in a frame', metavar='[0-1]')
@@ -52,25 +60,60 @@ def create_parser():
                 1e-8 work best for polyphonic piano while 1e-2 work best for noisy guitar recording
                 ''', metavar='<float>')
             piano_debug_group.add_argument('-d', '--debug', type=float, help='debug a certain time frame, will show the cross-correlation with the template matrix and pseudo2D spectrum', metavar='<time in seconds>')
-            p.set_defaults(gamma=50, standard_deviation=1e-2, threshold=0.55)
+            p.set_defaults(gamma=50, standard_deviation=1e-3, threshold=0.55)
 
         input_group.add_argument("-u", '--url', type=str, help='URL to the music file')
         input_group.add_argument('-r', '--recording', action='store_true', help='Record audio from microphone')
         input_group.add_argument('-f', '--file', type=str, help='Path to the music file with .wav extension')
         p.add_argument('-o', '--output', type=str, help='Output file name')
+
     return parser
 
+def handle_extraction(STEM, path_to_audio):
+    # get the path to the local file
+    print(credits_to_demucs)
+    current_directory = os.getcwd()
+    import demucs.separate
+    name =  os.path.split(path_to_audio)[-1].split(".")[0]
+    model = "htdemucs_6s"
+    res_path = os.path.join(current_directory, "separated", model, name, STEM + ".mp3")
+    valid_STEM = ["guitar", "piano", "drum", "vocal", "bass"]
+    if STEM not in valid_STEM:
+        print(colored("Invalid instrument to extract,","red", attrs=["bold"])," please provide one of the following: guitar, piano, drum, vocal, bass.",sep="")
+        sys.exit(1)
+    demucs.separate.main(["--mp3", "--two-stems", STEM, "-n", model, path_to_audio])
+    return res_path
 
 def main():
     parser = create_parser()
     args = parser.parse_args()
-    #print(args)
+    if args.file:
+        audio_path = args.file
+
+    elif args.recording:
+        from rec_unlimited import record
+        audio_path = record()
+
+    elif args.url:
+        import yt_dlp
+        with yt_dlp.YoutubeDL({'format': 'bestaudio', 'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'wav'}]}) as ydl:
+            info_dict = ydl.extract_info(args.url, download=True)
+            audio_path = ydl.prepare_filename(info_dict).replace('.webm', '.wav').replace('.m4a', '.wav')
+    else:
+        error("No input provided")
+        sys.exit(1)
+
+    if args.extract:
+        audio_path = handle_extraction(args.extract, audio_path)
+    audio = AudioSignal(audio_path)
+    partition = Partition(audio.tempo)
+
 
     if args.Modes == "polyphonic":
         if args.benchmark:
             from Validation.Validator import benchmark
             if not os.path.exists(args.benchmark):
-                print(f"File {args.benchmark} not found")
+                error(f"File {args.benchmark} not found")
                 sys.exit(1)
             # if args.benchmark is in validation folder print the credit to maestro dataset
             if args.benchmark.startswith("Validation"):
@@ -84,27 +127,7 @@ def main():
             pprint.pprint(dict(score.items()))
             sys.exit(0)
 
-    if args.file:
-        audio_path = args.file
-        audio = AudioSignal(audio_path)
-        partition = Partition(audio.tempo)
 
-    elif args.recording:
-        from rec_unlimited import record
-        audio_path = record()
-        audio = AudioSignal(audio_path)
-        partition = Partition(audio.tempo)
-
-    elif args.url:
-        import yt_dlp
-        with yt_dlp.YoutubeDL({'format': 'bestaudio', 'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'wav'}]}) as ydl:
-            info_dict = ydl.extract_info(args.url, download=True)
-            audio_path = ydl.prepare_filename(info_dict).replace('.webm', '.wav').replace('.m4a', '.wav')
-        audio = AudioSignal(audio_path)
-        partition = Partition(audio.tempo)
-    else:
-        print("No input provided")
-        sys.exit(1)
 
 
     if args.Modes == "polyphonic":
@@ -143,10 +166,7 @@ def main():
 
     else:
         if args.piano_roll:
-            print("Monophonic mode does not support piano roll visualization")
-            sys.exit(1)
-        if args.debug:
-            print("Monophonic mode does not support debug")
+            error("Monophonic mode does not support piano roll visualization")
             sys.exit(1)
         print("Monophonic mode enabled")
         mono = Mono(audio)
@@ -155,6 +175,7 @@ def main():
 
     if args.output:
         partition.save_score(partition.score(simple_notation, polyphonic=(args.Modes == "polyphonic")), args.output)
+
     if args.recording:
         # delete audio file after processing
         if args.output:

@@ -2,9 +2,10 @@ import librosa
 import numpy as np
 import scipy
 import sys
+import os
 
-from Test.generate_sample_for_test import MusicGenerator
-from MusicRetrieval import AudioSignal, AudioParams, Note
+# from Test.generate_sample_for_test import MusicGenerator
+from mir.MusicRetrieval import AudioSignal, AudioParams, Note
 from functools import cached_property
 import matplotlib.pyplot as plt
 
