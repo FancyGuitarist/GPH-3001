@@ -13,7 +13,7 @@
 
 3. **Check available commands**:
    ```bash
-   python mir --help
+   python -m mir --help
    ```
 
 ## Example Usage
