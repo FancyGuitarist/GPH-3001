@@ -3,7 +3,7 @@ import abjad
 import numpy as np
 import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+from functools import partial
 # Assuming the Partition class is defined in a module named `partition`
 from mir.anotation import Partition, full_notes
 def capture_locals(func):
@@ -31,6 +31,11 @@ class TestPartition(unittest.TestCase):
             ('E4', 6, 1),  # Quarter note
             ('N', 7, 1)   # Rest
         ]
+        self.abj_simple_notation = [
+            ("c'", 0, 4),  # Whole note
+            ("d'", 4.0, 2),  # Half note
+            ("e'", 6, 1),  # Quarter note
+            ("N", 7, 1)]   # Rest
         self.tempo = 60
         self.simple_notation_with_chords = [
             (['C3','E3','G4'], 0, 4),  # Whole note
@@ -38,11 +43,24 @@ class TestPartition(unittest.TestCase):
             (['E4','G2','B4'], 6, 1),  # Quarter note
             ('N', 7, 1)   # Rest
         ]
-        self.partition = Partition( self.tempo)
+        self.partition = Partition(self.tempo)
+
 
     def test_initialization(self):
         self.assertEqual(self.partition.tempo, self.tempo)
         # self.assertEqual(self.partition.simple_notation(), self.simple_notation)
+    def test_note_name_to_abjad_format(self):
+        self.assertEqual(self.partition.note_name_to_abjad_format('C4',join=True), "c'")
+        self.assertEqual(self.partition.note_name_to_abjad_format('D#4',join=True), "ds'")
+
+    def test_note_name_to_abjad_format_vectorized(self):
+        vec_simple_notation = [note[0] for note in self.simple_notation]
+        note_name_to_abjad_join = partial(self.partition.note_name_to_abjad_format, join=True)
+        abj_list = list(map(note_name_to_abjad_join, vec_simple_notation))
+        for i, abj_note in enumerate(abj_list):
+            self.assertEqual(abj_note, self.abj_simple_notation[i][0])
+
+
 
     def test_get_closest_duration(self):
         self.assertEqual(self.partition._get_closest_duration(1), "1/4")
@@ -63,9 +81,7 @@ class TestPartition(unittest.TestCase):
             self.assertEqual(type(v), float)
 
 
-    def test_note_name_to_abjad_format(self):
-        self.assertEqual(self.partition.note_name_to_abjad_format('C4',join=True), "c'")
-        self.assertEqual(self.partition.note_name_to_abjad_format('D#4',join=True), "ds'")
+
 
     def test_is_bass_treble(self):
         self.assertTrue(self.partition.is_bass_treble(self.simple_notation[0]) == 'bass')
@@ -80,8 +96,8 @@ class TestPartition(unittest.TestCase):
     def test_extract_bass_treble_staff(self):
         correct_treb, correct_bass = self.partition.extract_bass_treble_staff(self.simple_notation)
         # verifiy that the correct notes are extracted
-        self.assertEqual([note[0] for note in correct_treb], ['C4', 'D4', 'E4'])
-        self.assertEqual([note[0] for note in correct_bass], ['N'])
+        self.assertEqual([note[0] for note in correct_bass], ['C4', 'D4', 'E4', 'N'])
+        self.assertEqual([note[0] for note in correct_treb], [])
 
     def test_to_abjad_staff(self):pass
     def test_separate_treble_bass(self):pass

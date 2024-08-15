@@ -1,5 +1,5 @@
 
-from functools import partial
+from functools import cached_property, partial
 
 from numpy.core.multiarray import ndarray
 import abjad
@@ -42,6 +42,12 @@ class Partition:
         self.tempo = tempo
         self.duration_mapping_dict = dict(full_notes(self.tempo))
 
+    @cached_property
+    def valid_note_name(self):
+        valid_note_name = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+        valid_note_name += [note.lower() for note in valid_note_name]
+        valid_note_name += [note + '#' for note in valid_note_name] + [note + '♯' for note in valid_note_name]
+        return valid_note_name
     def _get_closest_duration(self, duration):
         """
         Get closest musical duration to the given time duration using tempo estimation
@@ -94,7 +100,12 @@ class Partition:
         return : tuple = (note: str, octave_str: str)
 
         """
+        if note_name == 'N':
+            return note_name
+
         note : str = note_name[:-1].lower()
+        if note not in self.valid_note_name:
+            raise ValueError(f"Invalid note name {note_name}")
         if '#' in note or "♯" in note:
             note = note.replace('#', 's')
             note = note.replace('♯', 's')
@@ -180,6 +191,7 @@ class Partition:
             else:
                 raise ValueError("The note or chord is neither in the bass nor treble staff.")
         return treble, bass
+
     def extract_bass_treble_staff(self, simple_notation_vec: list[tuple[str, float, float]]) -> tuple[list[tuple[str, float, float]], list[tuple[str, float, float]]]:
 
         """

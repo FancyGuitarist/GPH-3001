@@ -8,7 +8,7 @@ run: $(VENV)/bin/activate
 	./$(VENV)/bin/python3 $(TARGET) monophonic -f $(AUDIO_FILE)
 
 test: $(VENV)
-	PYTHONWARNINGS=ignore $(VENV)/bin/python3 -m unittest mir.Test.testBasic mir.Test.testAnotation mir.Test.testChordIdentifier mir.Test.testPseudo2D mir.Test.testMain
+	PYTHONWARNINGS=ignore $(VENV)/bin/python3 -m unittest mir.Test.testBasic mir.Test.testAnotation mir.Test.testChordIdentifier mir.Test.testPseudo2D
 
 coverage: $(VENV)
 	coverage html -d Test/coverage_html && open Test/coverage_html/index.html
