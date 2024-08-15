@@ -16,15 +16,16 @@ jobs:
       - name: Cache Homebrew dependencies
         uses: actions/cache@v3
         with:
-          path: /usr/local/Homebrew  # or /opt/homebrew for Apple Silicon Macs
-          key: ${{ runner.os }}-brew-${{ hashFiles('Brewfile') }}
+          path: /opt/homebrew
+          key: ${{ runner.os }}-brew-cache
           restore-keys: |
-            ${{ runner.os }}-brew-
+            ${{ runner.os }}-brew-cache
 
       - name: Install Homebrew packages
         shell: bash
         run: |
-          brew bundle --file=Brewfile || brew bundle dump --file=Brewfile
+          brew install ffmpeg
+          brew install lilypond
 
       - name: Cache pip dependencies
         uses: actions/cache@v3
@@ -34,19 +35,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      - name: Set up Homebrew dependencies
-        shell: bash
-        run: |
-          brew install ffmpeg
-          brew install lilypond
-
-      - name: Set up Python environment and install dependencies
+      - name: Set up Python environment
         shell: bash
         run: |
           if [ -d "./venv" ]; then
             rm -rf ./venv
           fi
           python3.11 -m venv venv
+          source ./venv/bin/activate
+
+      - name: Install Python dependencies
+        shell: bash
+        run: |
           source ./venv/bin/activate
           pip install -r requirements.txt
 
@@ -55,27 +55,4 @@ jobs:
         run: |
           source ./venv/bin/activate
           make test
-
-  deploy:
-    runs-on: macos-14
-    needs: test
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Deploy to Main
-        if: github.ref == 'refs/heads/main'
-        shell: bash
-        run: |
-          echo "All tests passed, deploying to main"
-          # Deployment steps here
-
-      - name: Push to main
-        if: github.ref != 'refs/heads/main'
-        shell: bash
-        run: |
-          git checkout main
-          git merge ${{ github.ref }}
-          git push origin main
 
