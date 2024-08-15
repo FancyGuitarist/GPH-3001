@@ -95,7 +95,7 @@ class Pseudo2D(AudioParams):
             # -6 dB per harmonic
             damping_factor /= librosa.db_to_amplitude(4.7)
         template_matrix = np.outer(rq, rq)
-        template_matrix = template_matrix / np.sqrt(np.sum(template_matrix))
+        template_matrix = template_matrix / np.sqrt(np.sum(template_matrix**2))
         return template_matrix
 
     @property
@@ -185,7 +185,7 @@ class Pseudo2D(AudioParams):
     def multipitch_estimate(self):
         """
         Estimate the multipitch of the audio signal.
-        Returns:
+        Returns: (song, piano_roll)
             song: list of np.array of frequencies in hz
             piano_roll: np.ndarray of shape (n_notes, n_frames)
 

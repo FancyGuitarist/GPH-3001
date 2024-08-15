@@ -38,7 +38,7 @@ class TestMusicTranscription(unittest.TestCase):
         self.assertIsInstance(parser, argparse.ArgumentParser)
 
         # Check if specific arguments exist
-        args = parser.parse_args(['-e', 'guitar'])
+        args = parser.parse_args(['monophonic' , '-e', 'guitar'])
         self.assertEqual(args.extract, 'guitar')
 
         args = parser.parse_args(['monophonic', '-f', 'test.wav'])
@@ -49,7 +49,7 @@ class TestMusicTranscription(unittest.TestCase):
         self.assertEqual(args.Modes, 'polyphonic')
         self.assertEqual(args.benchmark, 'test.midi')
 
-    @patch('mir.AudioSignal')
+    @patch('mir.MusicRetrieval.AudioSignal')
     @patch('mir.anotation')
     @patch('os.path.exists')
     @patch('argparse.ArgumentParser.parse_args')
@@ -67,7 +67,7 @@ class TestMusicTranscription(unittest.TestCase):
             mock_benchmark.assert_called_once_with('test.midi', show_piano=False)
             mock_exit.assert_called_once_with(0)
 
-    @patch('mir.AudioSignal')
+    @patch('mir.MusicRetrieval.AudioSignal')
     @patch('mir.anotation')
     @patch('os.path.exists')
     @patch('argparse.ArgumentParser.parse_args')
@@ -83,7 +83,7 @@ class TestMusicTranscription(unittest.TestCase):
             mock_partition.assert_called_once()
             mock_exit.assert_not_called()
 
-    @patch('mir.AudioSignal')
+    @patch('mir.MusicRetrieval.AudioSignal')
     @patch('mir.anotation')
     @patch('yt_dlp.YoutubeDL')
     @patch('argparse.ArgumentParser.parse_args')
@@ -108,7 +108,7 @@ class TestMusicTranscription(unittest.TestCase):
     @patch('sys.exit')
     @patch('argparse.ArgumentParser.parse_args')
     def test_no_input_provided(self, mock_args, mock_exit):
-        mock_args.return_value = argparse.Namespace(Modes=None, file=None, recording=None, url=None)
+        mock_args.return_value = argparse.Namespace(Modes=None, file=None, recording=None, url=None, benchmark=None, extract=None)
 
         with patch('builtins.print') as mock_print:
             main()

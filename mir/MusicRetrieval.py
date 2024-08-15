@@ -4,7 +4,7 @@ import librosa
 #import scipy.io.wavfile as wav
 import numpy as np
 from enum import Enum
-from MIR_lib import  Situation, Note_State, MusicDynamics, build_transition_matrix, classify_case
+from mir.MIR_lib import  Situation, Note_State, MusicDynamics, build_transition_matrix, classify_case
 import matplotlib.pyplot as plt
 # TODO utiliser la librairy HMMlearn pour implémenter un modèle HMM
 # from hmmlearn import hmm

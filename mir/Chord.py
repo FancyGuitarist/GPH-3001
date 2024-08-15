@@ -1,5 +1,5 @@
 import librosa
-from MusicRetrieval import AudioSignal
+from mir.MusicRetrieval import AudioSignal
 import numpy as np
 import matplotlib.pyplot as plt
 

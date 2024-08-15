@@ -3,8 +3,8 @@ import numpy as np
 import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from Chord import ChordIdentifier, get_dummy_chroma
-from MusicRetrieval import AudioSignal
+from mir.Chord import ChordIdentifier, get_dummy_chroma
+from mir.MusicRetrieval import AudioSignal
 AUDIO_PATH = 'song&samples/polyphonic.wav'
 
 class TestChordIdentifier(unittest.TestCase):

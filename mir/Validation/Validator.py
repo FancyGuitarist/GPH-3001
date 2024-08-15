@@ -1,3 +1,4 @@
+#!/Users/antoine/Desktop/GPH/E2024/PFE/venv/bin/python3.11
 import librosa
 from matplotlib import legend
 import pretty_midi as pm
@@ -30,7 +31,9 @@ def convert_midi_to_wav(midi_path):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     if os.path.exists(current_dir + "/" + name):
         return current_dir + "/" + name
-    os.system(f"fluidsynth -ni {current_dir}/TimGM6mb.sf2 {midi_path} -F {name} -r 44100  2> /dev/null")
+    sig = os.system(f"fluidsynth -ni {current_dir}/TimGM6mb.sf2 {midi_path} -F {name} -r 44100  2> /dev/null")
+    if sig != 0:
+        raise Exception("Error while converting the midi file to wav, is fluidsynth installed ?")
     return name
 
 def benchmark(midi_path, show_piano=None, clean=False):
@@ -66,7 +69,7 @@ def compare(midi_file_path, pseudo: Pseudo2D ,hop_length = params.hop_length, sa
 
     ground_truth = [librosa.midi_to_hz(np.argwhere(midi_roll[:,i]).flatten()) for i in np.arange(len(midi_roll[1,:])) ]
 
-    if (show_piano is not None):
+    if show_piano:
         fig, (ax)= plt.subplots()
         #ax1.imshow(midi_roll, aspect='auto', origin='lower', interpolation='nearest')
         #librosa.display.specshow(midi_roll, y_axis='cqt_note', x_axis='time', sr=sampling_rate, hop_length=hop_length, ax=ax1, fmin=librosa.midi_to_hz(0))

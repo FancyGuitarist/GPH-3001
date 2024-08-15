@@ -5,7 +5,21 @@ import os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Assuming the Partition class is defined in a module named `partition`
-from anotation import Partition, full_notes
+from mir.anotation import Partition, full_notes
+def capture_locals(func):
+    def wrapper(*args, **kwargs):
+        f_locals = {}
+        def profiler(frame, event, _):
+            nonlocal f_locals
+            if event == 'return':
+                f_locals = frame.f_locals.copy()
+        orig_profiler = sys.getprofile()
+        sys.setprofile(profiler)
+        try:
+            return func(*args, **kwargs), f_locals
+        finally:
+            sys.setprofile(orig_profiler)
+    return wrapper
 
 class TestPartition(unittest.TestCase):
 
@@ -18,6 +32,12 @@ class TestPartition(unittest.TestCase):
             ('N', 7, 1)   # Rest
         ]
         self.tempo = 60
+        self.simple_notation_with_chords = [
+            (['C3','E3','G4'], 0, 4),  # Whole note
+            (['D4','F4','A4'], 4.0, 2),  # Half note
+            (['E4','G2','B4'], 6, 1),  # Quarter note
+            ('N', 7, 1)   # Rest
+        ]
         self.partition = Partition( self.tempo)
 
     def test_initialization(self):
@@ -60,7 +80,15 @@ class TestPartition(unittest.TestCase):
     def test_extract_bass_treble_staff(self):
         correct_treb, correct_bass = self.partition.extract_bass_treble_staff(self.simple_notation)
         # verifiy that the correct notes are extracted
+        self.assertEqual([note[0] for note in correct_treb], ['C4', 'D4', 'E4'])
+        self.assertEqual([note[0] for note in correct_bass], ['N'])
 
+    def test_to_abjad_staff(self):pass
+    def test_separate_treble_bass(self):pass
+    def test_sequential_correction(self):pass
+    def test_get_duration_rationnal(self):pass
+    def test_get_melody_chords_estimate(self):pass
+    def test_is_almost_equal(self):pass
 
     def test_convert_notes_to_abjad(self):
         treble_notes, bass_notes = self.partition.convert_notes_to_abjad(self.simple_notation)

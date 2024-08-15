@@ -1,12 +1,11 @@
-
 import unittest
 import numpy as np
 from unittest.mock import patch
 import sys,os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from MIR_lib import build_transition_matrix
-from MusicRetrieval import Note, AudioParams, AudioSignal, Mono
+from mir.MIR_lib import build_transition_matrix
+from mir.MusicRetrieval import Note, AudioParams, AudioSignal, Mono
 filepath = os.path.abspath(os.path.dirname(__file__))
 AUDIO_PATH = f'{filepath}/simple_note_progression.wav'
 

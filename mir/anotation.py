@@ -4,7 +4,7 @@ from functools import partial
 from numpy.core.multiarray import ndarray
 import abjad
 import numpy as np
-import pdb;
+# import pdb;
 #pdb.set_trace()
 
 
@@ -61,50 +61,19 @@ class Partition:
         best_fit = value_of_best_fit(duration)[0]
         return best_fit
 
-    # def _group_overlapping_notes(self, simple_notation, epsilon=0.05):
-    #     # Sort the data by start frame
-    #     simple_notation.sort(key=lambda x: x[1])
 
-    #     # List to store grouped notes
-    #     grouped_notes = []
-
-    #     # Initialize the first group with the first note
-    #     current_group = [simple_notation[0]]
-
-    #     # Iterate through the sorted list
-    #     for i in range(1, len(simple_notation)):
-    #         note, start, duration = simple_notation[i]
-    #         # Check if the current note overlaps with the last note in the current group
-    #         last_note, last_start, last_duration = current_group[-1]
-
-    #         if start < last_start + last_duration - epsilon:
-    #             # If they overlap, add the current note to the current group
-    #             current_group.append(simple_notation[i])
-    #         else:
-    #             # If they don't overlap, save the current group and start a new group
-    #             grouped_notes.append(current_group)
-    #             current_group = [simple_notation[i]]
-    #     grouped_notes.append(current_group)
-
-    #     return grouped_notes
-
-
-    def _get_melody_chords_estimate(self, simple_notation, extract=False):
+    def _get_melody_chords_estimate(self, simple_notation):
         """
         Convert note/chord name to abjad str format
         Parameters
         ----------
-        simple_notation : list[tuples(note: str, start_time: float, duration: float)]
+        simple_notation : list[tuples(note: list[str], start_time: float, duration: float)]
             list of tuples containing note/chord start time and duration
-        extract : bool
-            if True, extract the melody notes from the chords in tuple format.
-
         Returns
         -------
         melody + chord_estimate : list[tuples(note | chord: str of abjad format, start_time: float, duration: float))]
             list of grouped simple notation tuples present in the chords in abjad notation string format.
         """
-        #grouped_notes = self._group_overlapping_notes(simple_notation)
         note_name_to_abjad_format = partial(self.note_name_to_abjad_format, join=True)
         chord_estimate : list[tuple[str,float,float]]  = []
         melody : list[tuple[str,float,float]]  = []
@@ -115,45 +84,10 @@ class Partition:
                 iterable = ' '.join(list(map(note_name_to_abjad_format, note_or_chord )))
                 # print("iterable : ", iterable)
                 simple_chord_notation = (f"<{iterable}>", start, duration)
-            else:
+            else: # single note
                 simple_chord_notation = (note_name_to_abjad_format(*note_or_chord), start, duration)
             res.append(simple_chord_notation)
         return res
-        # for group in grouped_notes:
-
-        #     g = np.array(group)
-        #     (start_time , duration) = g.T[1:,...].astype(float)
-        #     mu_duration, sigma_duration = np.mean(duration),np.std(duration)
-        #     mu_start_time, sigma_start_time = np.mean(start_time),np.std(start_time)
-        #     # grab the notes where the duration and start_time are in sigma range of the mean
-        #     is_chord = (np.abs(duration - mu_duration) < mu_duration/2)# & (np.abs(start_time - mu_start_time) < sigma_start_time*2)
-        #     in_chord = g[is_chord]
-
-        #     out_chord = g[~is_chord]
-        #     for note, start, duration in out_chord:
-        #         # modify note to abjad notation
-        #         melody.append((note_name_to_abjad_format(note), float(start), float(duration)))
-
-        #     if len(in_chord) > 1: # verify if any chord are present
-        #         #print("in chord",in_chord)
-        #         # estimate start time and duration of the chord
-        #         start_time: float = np.min(in_chord.T[1].astype(float)).astype(float)
-        #         duration: float = np.max(in_chord.T[2].astype(float)).astype(float)
-        #         # convert the chord to abjad format
-        #         iterable = ' '.join(list(map(note_name_to_abjad_format, in_chord.T[0].astype(str) )))
-        #         # print("iterable : ", iterable)
-        #         simple_chord_notation = (f"<{iterable}>", start_time, duration)
-
-        #         chord_estimate.append(simple_chord_notation)
-        # if extract:
-        #     return melody, chord_estimate
-        # else:
-        #     # sorted by start time
-        #     # print("melody + chord_estimate melody, chord estimate:", melody +chord_estimate)
-        #     all = melody + chord_estimate
-        #     res = sorted(all, key=lambda x: x[1])
-        #     return res
-
 
     def note_name_to_abjad_format(self, note_name, join=False) -> str | tuple[str, str]:
         """Converts note name to abjad format.
@@ -191,9 +125,9 @@ class Partition:
         by adding a rest in between if there is a gap.
         """
         if smallest_duration is None:
-           epsilon_as_float = 0.01
+           epsilon_as_float = 0.0001
         else:
-            # samllest duration needs to be a str in the form of "1/32"
+            # smallest duration needs to be a str in the form of "1/32"
             epsilon_as_float = self.duration_mapping_dict[smallest_duration]
 
         if (len(simp_notation_vec) <= i + 1): # early return if last note
@@ -250,7 +184,8 @@ class Partition:
 
         """
         Extract the bass and treble staff from the simple notation.
-        Will also correct the sequential notes or chords in the simple notation so it fits in the score properly.
+        Will also apply sequential correction in the simple notation so it fits in the score properly.
+        (see sequential_correction() method for more details.)
 
         Parameters:
             simple_notation : list[tuple()]
@@ -415,7 +350,19 @@ class Partition:
         return score
 
     def save_score(self, score, output_path=None):
-        """Exporte la partition en format LilyPond."""
+        """Export score to a pdf file.
+
+        Parameters:
+            score : abjad.Score
+                the score object
+            output_path : str
+                the path where the pdf file will be saved
+
+        Returns:
+            str
+                the path of the pdf file
+
+        """
         if output_path is None:
             from os import getcwd
             output_path = getcwd()

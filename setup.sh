@@ -55,10 +55,14 @@ fi
 }
 
 
+
+
+
 function complete_setup {
 python3.11 -m venv venv
 source ./venv/bin/activate
 pip install -r requirements.txt
+python setup.py install
 }
 verify_installation
 if [ $? -eq 1 ]; then
@@ -68,7 +72,8 @@ fi
 
 complete_setup
 if [ $? -eq 0 ]; then
-    echo "Prérequis complété, vous pouvez désormais executer python mir --help"
+    source ./venv/bin/activate
+    echo "Prérequis complété, vous pouvez désormais executer \`mir --help\` pour voir les commandes disponibles."
 else
     "setup.sh à échoué"
 fi

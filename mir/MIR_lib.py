@@ -1,4 +1,3 @@
-
 """Enum for the different Situations that can happen when transitioning from one note to another"""
 
 from enum import Enum
