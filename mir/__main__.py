@@ -8,10 +8,12 @@ from termcolor import colored
 
 def error(message):
     print(colored(f'Error:', 'red', attrs=['bold']), message)
+
 def pgb(message):
-    return print(colored(message, 'green', attrs=['bold']))
+    print(colored(message, 'green', attrs=['bold']))
+
 def pcb(message):
-    return print(colored(message, 'cyan', attrs=['bold']))
+    print(colored(message, 'cyan', attrs=['bold']))
 
 credits_to_demucs =r"""
 This project uses the Demucs model for music source separation (MSS). Thank you @Alexandre Défossez!
@@ -36,7 +38,6 @@ def handle_benchmark(args):
     score = benchmark(args.benchmark, show_piano=args.piano_roll)
     import pprint
     pprint.pprint(dict(score.items()))
-    sys.exit(0)
 
 class CapitalizedHelpFormatter(argparse.HelpFormatter):
     def _format_action_invocation(self, action):
@@ -61,7 +62,7 @@ class CapitalizedHelpFormatter(argparse.HelpFormatter):
 
 
 # Create the CustomArgumentParser
-def create_parser():
+def parse_args(arg_list: list[str] | None = None):
     parser = argparse.ArgumentParser(prog="mir", description="Automatic Music transcription & Identification for musicians.", epilog="Music is the arithmetic of sounds as optics is the geometry of light. -Claude Debussy", formatter_class=CapitalizedHelpFormatter)
     analysis_parser = parser.add_subparsers(title='Analysis modes', dest='Modes')
     mono = analysis_parser.add_parser('monophonic', help='Monophonic mode',formatter_class=CapitalizedHelpFormatter )
@@ -90,7 +91,11 @@ def create_parser():
         input_group.add_argument('-f', '--file', type=str, help='Path to the music file with .wav extension')
         p.add_argument('-o', '--output', type=str, help='Output file name')
 
-    return parser
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stdout)
+        sys.exit(1)
+    args = parser.parse_args(arg_list)
+    return args
 
 def handle_extraction(STEM, path_to_audio):
     # get the path to the local file
@@ -107,12 +112,9 @@ def handle_extraction(STEM, path_to_audio):
     demucs.separate.main(["--mp3", "--two-stems", STEM, "-n", model, path_to_audio])
     return res_path
 
-def main():
-    parser = create_parser()
-    if len(sys.argv)==1:
-        parser.print_help(sys.stderr)
-        sys.exit(1)
-    args = parser.parse_args()
+def main(arg_list: list[str] | None = None):
+
+    args = parse_args(arg_list)
 
     if args.file:
         audio_path = str(args.file)
@@ -126,8 +128,11 @@ def main():
         with yt_dlp.YoutubeDL({'format': 'bestaudio', 'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'wav'}]}) as ydl:
             info_dict = ydl.extract_info(args.url, download=True)
             audio_path = str(ydl.prepare_filename(info_dict).replace('.webm', '.wav').replace('.m4a', '.wav'))
+
     elif args.Modes == "polyphonic" and args.benchmark:
         handle_benchmark(args)
+        sys.exit(0)
+
     else:
         error("No input provided")
         audio_path = ""

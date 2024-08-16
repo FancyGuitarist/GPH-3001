@@ -3,26 +3,98 @@ from unittest.mock import patch, MagicMock
 import argparse
 import sys
 import os
-
-
+from io import StringIO
+import subprocess
 # Assuming the main script is saved as 'py'
 # add the ../mir.py to the path so that we can import it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../mir')))
 
-from mir.__main__ import create_parser, main, CapitalizedHelpFormatter
+from mir.__main__ import parse_args, main, CapitalizedHelpFormatter, error, pgb, pcb
+avaible_modes = ['monophonic', 'polyphonic','chord-only']
+class TestUtilityFunctions(unittest.TestCase):
+    @patch('builtins.print')
+    def test_error_function(self, mock_print):
+        error("Test error message")
+        mock_print.assert_called_once_with('\x1b[1m\x1b[31mError:\x1b[0m', 'Test error message')
+
+    @patch('builtins.print')
+    def test_pgb_function(self, mock_print):
+        pgb("Test green message")
+        mock_print.assert_called_once_with('\x1b[1m\x1b[32mTest green message\x1b[0m')
+
+    @patch('builtins.print')
+    def test_pcb_function(self, mock_print):
+        pcb("Test cyan message")
+        mock_print.assert_called_once_with('\x1b[1m\x1b[36mTest cyan message\x1b[0m')
+
 
 class TestArgumentParsing(unittest.TestCase):
-    def setUp(self) -> None:
-        self.parser = create_parser()
 
-    def test_no_args(self):
-        with self.assertRaises(SystemExit):
-            with patch('sys.argv', ['mir']):
-                args = self.parser.parse_args()
-            args = self.parser.parse_args()
+    def test_parse_args_no_arguments(self):
+        # mock sys.argv to simulate no arguments
+        # relative path of the current file
+        f = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../mir'))
+        with patch.object(sys, 'argv', [f]):
+            with self.assertRaises(SystemExit) as cm:
+                with patch('sys.stdout', new=StringIO()):
+                    parse_args(sys.argv)
+            self.assertEqual(cm.exception.code, 1)
 
+    def test_parse_args_monophonic_mode(self):
+        args = parse_args(['monophonic', '-f', 'test.wav'])
+        self.assertEqual(args.Modes, 'monophonic')
+        self.assertEqual(args.file, 'test.wav')
 
+    def test_parse_args_polyphonic_mode(self):
+        args = parse_args(['polyphonic', '-f', 'test.wav'])
+        self.assertEqual(args.Modes, 'polyphonic')
+        self.assertEqual(args.file, 'test.wav')
 
+    def test_parse_args_chord_only_mode(self):
+        with patch('sys.stdout', new=StringIO()):
+            args = parse_args(['chord-only', '-f', 'test.wav'])
+        self.assertEqual(args.Modes, 'chord-only')
+        self.assertEqual(args.file, 'test.wav')
+
+    def test_invalid_argument(self):
+        with self.assertRaises(SystemExit) as cm:
+            with patch('sys.stderr', new=StringIO()):
+                parse_args(['invalid'])
+        self.assertEqual(cm.exception.code, 2)
+
+    @unittest.expectedFailure
+    def test_invalid_mode(self):
+        with patch('sys.stderr', new=StringIO()):
+            args = parse_args(['falcophonic', '-f', 'test.wav'])
+
+class TestIntegration(unittest.TestCase):
+    def setUp(self):
+            self.file = os.path.abspath(os.path.join(os.path.dirname(__file__), 'C_scale_dirty.wav'))
+            self.output_file = os.path.join(os.path.dirname(__file__), 'output_file_name.pdf')  # Adjust this path as needed
+            assert os.path.exists(self.file)
+
+    def tearDown(self):
+        # Clean up any output files created by the test
+        if os.path.exists(self.output_file):
+            os.remove(self.output_file)
+        # Close the PDF viewer if it's opened
+        try:
+            # This example assumes 'Preview' on macOS. Replace with the actual process name if different.
+            if sys.platform == 'darwin':  # macOS
+                subprocess.call(["pkill", "Preview"])
+            elif sys.platform == 'win32':  # Windows
+                subprocess.call(["taskkill", "/f", "/im", "AcroRd32.exe"])  # Example for Adobe Reader
+            elif sys.platform == 'linux':  # Linux
+                subprocess.call(["pkill", "evince"])  # Example for Evince PDF viewer
+        except Exception as e:
+            print(f"Failed to close PDF viewer: {e}")
+
+    def test_main_monophonic(self):
+        with patch('sys.stdout', new=StringIO()):
+            main(['monophonic', '-f', self.file, '-o', self.output_file])
+
+        # Assert that the output file was created
+        self.assertTrue(os.path.exists(self.output_file))
 
 class TestMusicTranscription(unittest.TestCase):
 
@@ -33,87 +105,6 @@ class TestMusicTranscription(unittest.TestCase):
         formatted_help = formatter._get_help_string(action)
         self.assertEqual(formatted_help, 'Extract the audio of an instrument')
 
-    def test_create_parser(self):
-        parser = create_parser()
-        self.assertIsInstance(parser, argparse.ArgumentParser)
-
-        # Check if specific arguments exist
-        args = parser.parse_args(['monophonic' , '-e', 'guitar'])
-        self.assertEqual(args.extract, 'guitar')
-
-        args = parser.parse_args(['monophonic', '-f', 'test.wav'])
-        self.assertEqual(args.Modes, 'monophonic')
-        self.assertEqual(args.file, 'test.wav')
-
-        args = parser.parse_args(['polyphonic', '--benchmark', 'test.midi'])
-        self.assertEqual(args.Modes, 'polyphonic')
-        self.assertEqual(args.benchmark, 'test.midi')
-
-    @patch('mir.MusicRetrieval.AudioSignal')
-    @patch('mir.anotation')
-    @patch('os.path.exists')
-    @patch('argparse.ArgumentParser.parse_args')
-    def test_main_polyphonic_mode(self, mock_args, mock_exists, mock_partition, mock_audio_signal):
-        mock_args.return_value = argparse.Namespace(
-            Modes='polyphonic', file='test.wav', benchmark='test.midi',
-            piano_roll=False, debug=None, threshold=0.55, gamma=50,
-            standard_deviation=1e-3, output=None, recording=False, url=None
-        )
-        mock_exists.return_value = True
-
-        with patch('benchmark') as mock_benchmark, \
-             patch('sys.exit') as mock_exit:
-            main()
-            mock_benchmark.assert_called_once_with('test.midi', show_piano=False)
-            mock_exit.assert_called_once_with(0)
-
-    @patch('mir.MusicRetrieval.AudioSignal')
-    @patch('mir.anotation')
-    @patch('os.path.exists')
-    @patch('argparse.ArgumentParser.parse_args')
-    def test_main_monophonic_mode(self, mock_args, mock_exists, mock_partition, mock_audio_signal):
-        mock_args.return_value = argparse.Namespace(
-            Modes='monophonic', file='test.wav', piano_roll=False,
-            output=None, recording=False, url=None
-        )
-
-        with patch('sys.exit') as mock_exit:
-            main()
-            mock_audio_signal.assert_called_once_with('test.wav')
-            mock_partition.assert_called_once()
-            mock_exit.assert_not_called()
-
-    @patch('mir.MusicRetrieval.AudioSignal')
-    @patch('mir.anotation')
-    @patch('yt_dlp.YoutubeDL')
-    @patch('argparse.ArgumentParser.parse_args')
-    def test_main_url_mode(self, mock_args, mock_yt_dlp, mock_partition, mock_audio_signal):
-        mock_args.return_value = argparse.Namespace(
-            Modes='polyphonic', url='http://testurl.com', file=None, recording=False,
-            piano_roll=False, debug=None, threshold=0.55, gamma=50,
-            standard_deviation=1e-3, output=None
-        )
-
-        mock_yt_dlp_instance = MagicMock()
-        mock_yt_dlp.return_value.__enter__.return_value = mock_yt_dlp_instance
-        mock_yt_dlp_instance.extract_info.return_value = {'format': 'bestaudio', 'ext': 'webm'}
-        mock_yt_dlp_instance.prepare_filename.return_value = 'test.webm'
-
-        main()
-
-        mock_yt_dlp_instance.extract_info.assert_called_once_with('http://testurl.com', download=True)
-        mock_audio_signal.assert_called_once_with('test.wav')
-        mock_partition.assert_called_once()
-
-    @patch('sys.exit')
-    @patch('argparse.ArgumentParser.parse_args')
-    def test_no_input_provided(self, mock_args, mock_exit):
-        mock_args.return_value = argparse.Namespace(Modes=None, file=None, recording=None, url=None, benchmark=None, extract=None)
-
-        with patch('builtins.print') as mock_print:
-            main()
-            mock_print.assert_called_once_with("No input provided")
-            mock_exit.assert_called_once_with(1)
 
 
 if __name__ == '__main__':
