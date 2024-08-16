@@ -13,15 +13,18 @@ from mir.__main__ import parse_args, main, CapitalizedHelpFormatter, error, pgb,
 avaible_modes = ['monophonic', 'polyphonic','chord-only']
 class TestUtilityFunctions(unittest.TestCase):
     @patch('builtins.print')
+    @patch('termcolor.colored')
     def test_error_function(self, mock_print):
         error("Test error message")
         mock_print.assert_called_once_with('\x1b[1m\x1b[31mError:\x1b[0m', 'Test error message')
 
+    @patch('termcolor.colored')
     @patch('builtins.print')
     def test_pgb_function(self, mock_print):
         pgb("Test green message")
         mock_print.assert_called_once_with('\x1b[1m\x1b[32mTest green message\x1b[0m')
 
+    @patch('termcolor.colored')
     @patch('builtins.print')
     def test_pcb_function(self, mock_print):
         pcb("Test cyan message")
