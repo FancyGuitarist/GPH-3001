@@ -1,3 +1,11 @@
+"""
+This package uses chord templates and HMM to recover the played chords from a chroma representation of the audio signal.
+
+TODO:
+    -> More chord template could be added dynamically to the chord_template matrix.
+    -> The transition matrix could be learned from a dataset of songs.
+"""
+
 import librosa
 from mir.MusicRetrieval import AudioSignal
 import numpy as np
@@ -5,9 +13,7 @@ import matplotlib.pyplot as plt
 
 AUDIO_PATH = "./song&samples/polyphonic.wav"
 
-"""
-This package uses chord templates with harmonics, where the chroma patterns also account for the harmonics of the chord notes.
-"""
+
 
 
 def get_dummy_chroma(path,hop_length=512, sr=22050):
@@ -24,7 +30,7 @@ class ChordIdentifier(AudioSignal):
         self.chroma = librosa.feature.chroma_cqt(y=AUDIO.y, sr=AUDIO.sampling_rate, hop_length=AUDIO.hop_length)
 
     @property
-    def chord_transition_matrix(self):
+    def chord_transition_matrix(self) -> np.ndarray:
         """
         Transition matrix between chords
         ------------------------------
@@ -32,6 +38,10 @@ class ChordIdentifier(AudioSignal):
         N: number of chords
         A: transition matrix
         transition matrix A is a N x N matrix where A[i,j] is the probability of transitioning from chord i to chord j
+
+        returns:
+        -------------------------
+            A : np.ndarray(N, N)
         """
         p = 0.1
         p_stay_silent = 0.1
@@ -69,6 +79,7 @@ class ChordIdentifier(AudioSignal):
         "Chroma going from C (0 index) to B (11 index)"
         # TODO potentially add 7th template, 9th, 11th, 13th and sus4, sus2, dim, aug
         # could also do an interval template to observe certain relations between notes like presence of fitfh, third, etc
+        # and use this to recover the played chord
         # such interval template could be more efficient than the chroma
         # template
         N = 12

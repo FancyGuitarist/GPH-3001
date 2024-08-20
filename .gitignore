@@ -3,6 +3,10 @@ mir.egg-info
 dist
 .zed
 .DS_Store
+*/.DS_Store
+*/*/.DS_Store
+*/__pycache__
+*/*/__pycache__
 .ipynb_checkpoints
 all-samples
 *.ly
@@ -23,3 +27,4 @@ mir/Validation/nsynth*
 Notes/.obsidian
 .Mono_explication.md
 separated/*/*
+song&samples

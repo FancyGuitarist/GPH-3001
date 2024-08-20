@@ -1,9 +1,13 @@
 from numpy._typing import _VoidCodes
+from numpy.typing import NDArray
 from typing_extensions import Any
 import librosa
 #import scipy.io.wavfile as wav
 import numpy as np
 from enum import Enum
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from mir.MIR_lib import  Situation, Note_State, MusicDynamics, build_transition_matrix, classify_case
 import matplotlib.pyplot as plt
 # TODO utiliser la librairy HMMlearn pour implémenter un modèle HMM
@@ -141,15 +145,15 @@ class Mono(MonoParams):
                 hop_length=self.hop_length)
         return f0, voiced_flag, voiced_prob
 
-    def no_hmm(self):
+    def no_hmm(self, threshold=0.7) -> NDArray[np.float64]:
         pitch, voiced_flag, voiced_prob = (self.pitch, self.voiced_flag, self.voiced_prob)
 
         f0_ = np.round(librosa.hz_to_midi(pitch - self.tuning)).astype(int)
         # make a pinaoroll with the notes
         pianoroll = np.zeros((self.n_notes, len(pitch)))
         for index, (note, voice) in enumerate(list(zip(f0_, voiced_flag))):
-            pianoroll[note - self.note_min.midi, index] = 1 if ( voiced_prob[index] > 0.7) else 0
-            print(note, voice, voiced_prob[index])
+            pianoroll[note - self.note_min.midi, index] = 1 if ( voiced_prob[index] > threshold) else 0
+            #print(note, voice, voiced_prob[index])
         return pianoroll
 
     def show_piano_roll(self):

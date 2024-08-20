@@ -60,10 +60,19 @@ class CapitalizedHelpFormatter(argparse.HelpFormatter):
             help_string = help_string.capitalize()
         return help_string
 
+def add_common_argument(parser):
+    piano_debug_group = parser.add_mutually_exclusive_group(required=False)
+    piano_debug_group.add_argument('-pr', '--piano-roll', action='store_true', help='Show piano roll visualization')
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("-u", '--url', type=str, help='URL to the music file')
+    input_group.add_argument('-r', '--recording', action='store_true', help='Record audio from microphone')
+    input_group.add_argument('-f', '--file', type=str, help='Path to the music file with .wav extension')
+    parser.add_argument('-o', '--output', type=str, help='Output file name')
+    parser.add_argument('-e', '--extract', type=str, help='Extract the audio of an instrument using Music Source Separation ', metavar='<guitar|piano|drums|vocals|other>')
 
 # Create the CustomArgumentParser
 def parse_args(arg_list: list[str] | None = None):
-    parser = argparse.ArgumentParser(prog="mir", description="Automatic Music transcription & Identification for musicians.", epilog="Music is the arithmetic of sounds as optics is the geometry of light. -Claude Debussy", formatter_class=CapitalizedHelpFormatter)
+    parser = argparse.ArgumentParser(prog="mir", description="Automatic music transcription & identification for musicians.", epilog="Music is the arithmetic of sounds as optics is the geometry of light. -Claude Debussy", formatter_class=CapitalizedHelpFormatter)
     analysis_parser = parser.add_subparsers(title='Analysis modes', dest='Modes')
     mono = analysis_parser.add_parser('monophonic', help='Monophonic mode',formatter_class=CapitalizedHelpFormatter )
     poly = analysis_parser.add_parser('polyphonic', help='Polyphonic mode',formatter_class=CapitalizedHelpFormatter )
@@ -74,13 +83,13 @@ def parse_args(arg_list: list[str] | None = None):
         piano_debug_group.add_argument('-pr', '--piano-roll', action='store_true', help='Show piano roll visualization')
 
         input_group = p.add_mutually_exclusive_group(required=True)
-        p.add_argument('-e', '--extract', type=str, help='extract the audio of an instrument using Music Source Separation ', metavar='<guitar|piano|drums|vocals|other>')
+        p.add_argument('-e', '--extract', type=str, help='Extract the audio of an instrument using Music Source Separation ', metavar='<guitar|piano|drums|vocals|other>')
         if p == poly:
-            input_group.add_argument('-b','--benchmark', type=str, help='compare against ground truth from midi file', metavar='<path/to/midi/file.midi>')
+            input_group.add_argument('-b','--benchmark', type=str, help='Compare against ground truth from midi file', metavar='<path/to/midi/file.midi>')
             p.add_argument('-t','--threshold', type=float, help='Threshold for the detection of note in with respect to the highest correlation value in a frame', metavar='[0-1]')
             p.add_argument('-g','--gamma', type=int, help='Gamma factor used in logarithmic compression, higher values increase the sensitivity', metavar='[1-inf]')
             p.add_argument('-std','--standard-deviation', type=float, help='''
-                Standard deviation threshold used to determine if a frame is silenced or not,
+                Standard deviation threshold used to determine if a frame is voiced or not,
                 1e-8 work best for polyphonic piano while 1e-3 work best for noisy guitar recording
                 ''', metavar='<float>')
             piano_debug_group.add_argument('-d', '--debug', type=float, help='debug a certain time frame, will show the cross-correlation with the template matrix and pseudo2D spectrum', metavar='<time in seconds>')
@@ -150,7 +159,7 @@ def main(arg_list: list[str] | None = None):
 
     if args.Modes == "polyphonic":
         pgb("Polyphonic mode enabled")
-        from Pseudo2D import Pseudo2D
+        from mir.Pseudo2D import Pseudo2D
         pseudo2d = Pseudo2D(audio)
         pseudo2d.gamma = args.gamma
         pseudo2d.threshold = args.threshold

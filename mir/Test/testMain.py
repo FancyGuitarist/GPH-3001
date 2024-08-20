@@ -5,7 +5,6 @@ import sys
 import os
 from io import StringIO
 import subprocess
-# Assuming the main script is saved as 'py'
 # add the ../mir.py to the path so that we can import it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../mir')))
 
@@ -97,6 +96,51 @@ class TestIntegration(unittest.TestCase):
 
         # Assert that the output file was created
         self.assertTrue(os.path.exists(self.output_file))
+        # assert it as content
+        self.assertGreater(os.path.getsize(self.output_file), 0)
+
+    def test_main_polyphonic_o(self):
+        with patch('sys.stdout', new=StringIO()):
+            main(['polyphonic', '-f', self.file, '-o', self.output_file])
+        # Assert that the output file was created
+        self.assertTrue(os.path.exists(self.output_file))
+        # assert it as content
+        self.assertGreater(os.path.getsize(self.output_file), 0)
+
+    def test_polyphonic_benchmark(self):
+        output = StringIO()
+        with self.assertRaises(SystemExit) as cm:
+            with patch('sys.stdout', new=output):
+                main(['polyphonic', '-b', 'mir/Validation/polyphonic_piano_test.midi'])
+            self.assertGreater(output.read().__len__(), 0)
+        self.assertEqual(cm.exception.code, 0)
+
+    @unittest.skip("Skip this test as it interupts the workflow.")
+    def test_polyphonic_piano_roll(self):
+        output = StringIO()
+        with self.assertRaises(SystemExit) as cm:
+            with patch('sys.stdout', new=output):
+                main(['polyphonic', '-pr' , '-f', self.file])
+            self.assertGreater(output.read().__len__(), 0)
+        self.assertEqual(cm.exception.code, 0)
+
+    def test_main_chord_only_wrong_argument(self):
+        with self.assertRaises(SystemExit) as cm:
+            with patch('sys.stderr', new=StringIO()):
+                main(['chord-only', '--Test','-f', self.file])
+        self.assertEqual(cm.exception.code, 2)
+
+class TestRecording(unittest.TestCase):
+    def setUp(self):
+        self.output_file = os.path.join(os.path.dirname(__file__), 'output_file_name.pdf')  # Adjust this path as needed
+
+    @unittest.skip("Skip this test as it interupts the workflow.")
+    def test_monophonic_recording(self):
+        # Test that the recording function can be called
+        from mir.rec_unlimited import record
+        with patch('sys.stdout', new=StringIO()):
+            outpath = record()
+
 
 class TestMusicTranscription(unittest.TestCase):
 

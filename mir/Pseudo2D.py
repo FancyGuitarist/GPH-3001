@@ -3,7 +3,7 @@ import numpy as np
 import scipy
 import sys
 import os
-
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # from Test.generate_sample_for_test import MusicGenerator
 from mir.MusicRetrieval import AudioSignal, AudioParams, Note
 from functools import cached_property
@@ -15,11 +15,12 @@ class Pseudo2D(AudioParams):
     def __init__(self, audio: AudioSignal) -> None:
         super().__init__()
         self.n_bins_per_octave = 36
-        self.n_harmonics = 5
+        self.n_harmonics = 3
         self.audio = audio
         self.threshold = 0.54
-        self.std_threshold = 1e-3
-        self.gamma = 1
+        self.std_threshold = 1e-2*0.5
+        self.gamma = 50
+        self.min_length = 5
 
     @cached_property
     def cqt(self):
@@ -77,6 +78,9 @@ class Pseudo2D(AudioParams):
                        ] = np.sum(np.abs(X_stft[cur_idxs]), axis=0)
         return X_stft_log
 
+    def R(self, x):
+        return self.n_bins_per_octave * np.log2(np.ceil(x))
+
     @cached_property
     def template_matrix(self):
         """
@@ -85,18 +89,67 @@ class Pseudo2D(AudioParams):
         - Q: Sparse 2-D template matrix.
         """
 
-        def R(x): return (self.n_bins_per_octave) * np.log2(np.ceil(x))
-        rq = np.zeros(R(self.n_harmonics).astype(int) + 1)
+        rq = np.zeros(self.R(self.n_harmonics).astype(int) + 1)
         harmonics = np.arange(1, self.n_harmonics + 1)
-        harmo = R(harmonics).astype(int)
+        harmo = self.R(harmonics).astype(int)
         damping_factor = 1
         for i in harmo:
             rq[i] = 1 * damping_factor
             # -6 dB per harmonic
-            damping_factor /= librosa.db_to_amplitude(4.7)
+            #damping_factor /= librosa.db_to_amplitude(4.7)
         template_matrix = np.outer(rq, rq)
         template_matrix = template_matrix / np.sqrt(np.sum(template_matrix**2))
         return template_matrix
+
+    def init_template_from_file(self, path):
+        self.template_matrix = np.load(path)
+
+    def generate_template_from_audio_file(self, path):
+        #import pdb; pdb.set_trace()
+        #breakpoint()
+        audio = AudioSignal(path)
+        # get the cqt at half the time
+        cqt = librosa.cqt(y=audio.y,
+                          sr=audio.sampling_rate,
+                          fmin=self.note_min.hz,
+                          hop_length=self.hop_length,
+                          n_bins=((self.note_max.midi - self.note_min.midi + 1)
+                                  * (self.n_bins_per_octave // 12)),
+                          bins_per_octave=self.n_bins_per_octave,
+                          window='hann',
+                          )
+        # detect onset
+        onset = librosa.onset.onset_detect(y=audio.y, sr=audio.sampling_rate)
+        # Detect the fundamental frequency using pyin
+        f0, voiced_flag, voiced_probs = librosa.pyin(audio.y, fmin=self.note_min.hz, fmax=self.note_max.hz, sr=audio.sampling_rate)
+        frame = np.argmax(voiced_probs)
+        fundamental_freq = f0[frame]
+        midi_shift = int(librosa.hz_to_midi(fundamental_freq) - self.note_min.midi)
+        size = self.R(self.n_harmonics).astype(int) + 1
+        # plt.plot(np.abs(cqt[:,frame]))
+        # plt.show()
+        template_1D = np.roll(np.abs(cqt[:,frame]), -midi_shift*(self.n_bins_per_octave // 12 ), axis=0).flatten()
+        # print(f"note : {librosa.hz_to_note(fundamental_freq)}, prob voiced : {voiced_probs[frame]}, shift : {librosa.hz_to_midi(fundamental_freq)}")
+        # plt.plot(template_1D)
+        # plt.show()
+        # filter the non local maximum
+        # Find indices of local maxima
+        local_maxima_indices = np.argwhere(
+            (template_1D > np.roll(template_1D, 1, axis=0)) &
+            (template_1D > np.roll(template_1D, -1, axis=0))
+        ).flatten()
+
+        # Create an array of zeros
+        output_array = np.zeros_like(template_1D)
+
+        # Set only the local maxima to their original values
+        output_array[local_maxima_indices] = template_1D[local_maxima_indices]
+
+        # only keep the first n_harmonics
+        template_1D = output_array[:size]
+
+        template_1D /= np.linalg.norm(template_1D)
+        return np.abs(np.outer(template_1D.conj(), template_1D))
 
     @property
     def pseudo_2d(self):
@@ -165,7 +218,7 @@ class Pseudo2D(AudioParams):
         return (indexs.flatten() -
                 self.template_matrix.shape[0] // 2) // bin_per_note
 
-    def filter_short_notes(self, piano_roll: np.ndarray, min_length=5):
+    def filter_short_notes(self, piano_roll: np.ndarray):
         """
         Filter out notes that are shorter than the specified minimum length.
         """
@@ -176,7 +229,7 @@ class Pseudo2D(AudioParams):
                 ([0], piano_roll[note, :], [0]))) == -1)[0]
             length = len(note_onsets)
             for i in range(length):
-                if note_offsets[i] - note_onsets[i] < min_length:
+                if note_offsets[i] - note_onsets[i] < self.min_length:
                     piano_roll[note, note_onsets[i]:note_offsets[i]] = 0
 
 
@@ -202,10 +255,9 @@ class Pseudo2D(AudioParams):
             piano_roll[notes, index] = 1
 
         piano_roll = self.filter_short_notes(piano_roll)
-        s_pr = np.roll(piano_roll, -2, axis=1)
 
         song = [librosa.midi_to_hz(np.argwhere(
-            s_pr[:, i]) + self.note_min.midi).flatten() for i in np.arange(s_pr.shape[1])]
+            piano_roll[:, i]) + self.note_min.midi).flatten() for i in np.arange(piano_roll.shape[1])]
         return song, piano_roll
 
 
@@ -251,18 +303,18 @@ class Pseudo2D(AudioParams):
 
         return simple_grouped_notes
 
-    def show_multipitch_estimate(self, piano_roll: np.ndarray):
+    def show_multipitch_estimate(self, piano_roll: np.ndarray, ax=plt.gca):
         librosa.display.specshow(
             piano_roll,
             fmin=self.note_min.hz,
             y_axis='cqt_note',
             x_axis='time',
             sr=self.sampling_rate,
-            hop_length=self.hop_length)
+            hop_length=self.hop_length,
+            ax=ax)
         plt.xlabel('Time')
         plt.ylabel('Pitch')
         plt.title('Multipitch estimation')
-        plt.show()
 
     def show(self, time):
         frame = librosa.time_to_frames(
@@ -290,11 +342,21 @@ class Pseudo2D(AudioParams):
 
 if __name__ == "__main__":
     # bunch of code to test functionnality
-    audio = AudioSignal("song&samples/polyphonic.wav")
+    audio = AudioSignal("song&samples/gamme_C.wav")
+    fig, ax = plt.subplots(2, 1)
 
     pseudo = Pseudo2D(audio)
+    pseudo.gamma = 1
+    # librosa.display.specshow(librosa.cqt(audio.y,sr=audio.sampling_rate), sr=pseudo.sampling_rate, x_axis='time', y_axis='cqt_note', ax=plt.gca())
+    # plt.show()
     from MusicRetrieval import Note
+
     song, piano = pseudo.multipitch_estimate()
-    pseudo.show_multipitch_estimate(piano)
-    #pseudo.show_multipitch_estimate()
-    print(pseudo.to_simple_notation_v2(piano))
+    pseudo.show_multipitch_estimate(piano, ax=ax[0])
+    pseudo.template_matrix = pseudo.generate_template_from_audio_file("/Users/antoine/Desktop/GPH/E2024/PFE/mir/single-piano-note-a4_100bpm_C_major.wav")
+    song, piano = pseudo.multipitch_estimate()
+    pseudo.show_multipitch_estimate(piano, ax=ax[1])
+    plt.show()
+    pseudo.show(3)
+
+    #print(pseudo.to_simple_notation_v2(piano))

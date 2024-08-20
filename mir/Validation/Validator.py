@@ -1,4 +1,3 @@
-#!/Users/antoine/Desktop/GPH/E2024/PFE/venv/bin/python3.11
 import librosa
 from matplotlib import legend
 import pretty_midi as pm
@@ -19,7 +18,7 @@ params = AudioParams()
 #first_10_midi_files = glob('/Users/antoine/Desktop/GPH/E2024/PFE/Validation/maestro-v1.0.0/2017/*.midi')[:10]
 #mid = pm.PrettyMIDI(first_10_midi_files[0])
 
-test_1_path = "/Users/antoine/Desktop/GPH/E2024/PFE/Validation/maestro-v1.0.0/2017/MIDI-Unprocessed_041_PIANO041_MID--AUDIO-split_07-06-17_Piano-e_1-01_wav--1.midi"
+test_1_path = "/Users/antoine/Desktop/GPH/E2024/PFE/mir/Validation/polyphonic_piano_test.midi"
 
 
 
@@ -42,13 +41,17 @@ def benchmark(midi_path, show_piano=None, clean=False):
     pseudo = Pseudo2D(audio)
 
     # optimize the parameters for polyphonic piano
-    pseudo.gamma = 6_700
-    pseudo.std_threshold = 1e-8
-
-    test_result, piano = pseudo.multipitch_estimate()
+    pseudo.gamma = 500
+    pseudo.std_threshold = 1e-6
+    pseudo.min_length = 3
+    pseudo.threshold = 0.64
+    #pseudo.template_matrix = pseudo.generate_template_from_audio_file("/Users/antoine/Desktop/GPH/E2024/PFE/mir/single-piano-note-a3_60bpm_A_major.wav")
+    #pseudo.show(1)
+    #plt.show()
+    #test_result, piano = pseudo.multipitch_estimate()
     # piano = np.roll(piano, -3, axis=1)
 #
-    score = compare(midi_path, pseudo, hop_length=audio.hop_length, sampling_rate=audio.sampling_rate, show_piano=show_piano)
+    score = compare(midi_path, pseudo, sampling_rate=audio.sampling_rate, show_piano=show_piano)
     f_measure = f(score['Precision'], score["Recall"])
     score['F-measure'] = f_measure
     if clean:
@@ -58,9 +61,16 @@ def benchmark(midi_path, show_piano=None, clean=False):
 
 def compare(midi_file_path, pseudo: Pseudo2D ,hop_length = params.hop_length, sampling_rate = params.sampling_rate,show_piano=None):
     mid = pm.PrettyMIDI(midi_file_path)
+
+    # shift the piano roll by 2 frame to match the midi file
     test_result, piano = pseudo.multipitch_estimate()
+    #piano = np.roll(piano, -2, axis=1)
+    #test_result = test_result[2:] + test_result[:2]
+
+
     hop_time = (hop_length/sampling_rate)
     s = len(test_result)
+    print(f"{s=}")
     estimate_time = np.linspace(0,s*hop_time,s)
 
     midi_roll = np.zeros((128, mid.instruments[0].get_piano_roll(times=estimate_time).shape[1]))
@@ -80,7 +90,6 @@ def compare(midi_file_path, pseudo: Pseudo2D ,hop_length = params.hop_length, sa
         fig.tight_layout()
 
         fig.set_size_inches(12, 6)
-        #plt.legend(['Legend','1;',"test"],loc='upper right')
 
         plt.show()
     scores = evaluate(estimate_time,ground_truth,estimate_time,test_result)
@@ -90,5 +99,5 @@ def compare(midi_file_path, pseudo: Pseudo2D ,hop_length = params.hop_length, sa
 
 
 if __name__ == "__main__":
-    score = benchmark(test_1_path,show_piano=None)
+    score = benchmark(test_1_path,show_piano=True)
     print(score)

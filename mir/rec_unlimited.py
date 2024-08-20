@@ -48,14 +48,13 @@ def user_input():
     input("")
     stop.set()
 def record():
-
     try:
         print("choose a device:")
         print(sd.query_devices())
         device = int(input())
         print("you chose: ", device)
         threading.Thread(target=user_input).start()
-        f = tempfile.mktemp(prefix='delme_rec_unlimited_',
+        f = tempfile.mktemp(prefix='I-V_',
                                                 suffix='.wav', dir='output')
         if args.samplerate is None:
             device_info = sd.query_devices(args.device, 'input')
@@ -70,6 +69,7 @@ def record():
                 print('Press Enter to stop the recording')
                 while not stop.is_set():
                     file.write(q.get())
+
         return f
     except KeyboardInterrupt:
         print('\nRecording finished: ' + repr(args.filename))
@@ -77,3 +77,5 @@ def record():
 
     except Exception as e:
         exit(type(e).__name__ + ': ' + str(e))
+if __name__ == "__main__":
+    record()
