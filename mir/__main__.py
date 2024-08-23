@@ -35,7 +35,7 @@ def handle_benchmark(args):
         Factorized Piano Music Modeling and Generation with the MAESTRO Dataset.'
         In International Conference on Learning Representations, 2019.""")
         pgb("-"*l)
-    score = benchmark(args.benchmark, show_piano=args.piano_roll)
+    score = benchmark(args.benchmark, show_piano=args.piano_roll,gamma=args.gamma, threshold=args.threshold, std_threshold=args.standard_deviation)
     import pprint
     pprint.pprint(dict(score.items()))
 
@@ -68,7 +68,7 @@ def add_common_argument(parser):
     input_group.add_argument('-r', '--recording', action='store_true', help='Record audio from microphone')
     input_group.add_argument('-f', '--file', type=str, help='Path to the music file with .wav extension')
     parser.add_argument('-o', '--output', type=str, help='Output file name')
-    parser.add_argument('-e', '--extract', type=str, help='Extract the audio of an instrument using Music Source Separation ', metavar='<guitar|piano|drums|vocals|other>')
+    parser.add_argument('-e', '--extract', type=str, help='Extract the audio of an instrument using Music Source Separation ', metavar='<guitar|bass|piano|vocals|other>')
 
 # Create the CustomArgumentParser
 def parse_args(arg_list: list[str] | None = None):
@@ -83,17 +83,17 @@ def parse_args(arg_list: list[str] | None = None):
         piano_debug_group.add_argument('-pr', '--piano-roll', action='store_true', help='Show piano roll visualization')
 
         input_group = p.add_mutually_exclusive_group(required=True)
-        p.add_argument('-e', '--extract', type=str, help='Extract the audio of an instrument using Music Source Separation ', metavar='<guitar|piano|drums|vocals|other>')
+        p.add_argument('-e', '--extract', type=str, help='Extract the audio of an instrument using Music Source Separation ', metavar='<guitar|bass|piano|vocals|other>')
         if p == poly:
             input_group.add_argument('-b','--benchmark', type=str, help='Compare against ground truth from midi file', metavar='<path/to/midi/file.midi>')
             p.add_argument('-t','--threshold', type=float, help='Threshold for the detection of note in with respect to the highest correlation value in a frame', metavar='[0-1]')
             p.add_argument('-g','--gamma', type=int, help='Gamma factor used in logarithmic compression, higher values increase the sensitivity', metavar='[1-inf]')
             p.add_argument('-std','--standard-deviation', type=float, help='''
                 Standard deviation threshold used to determine if a frame is voiced or not,
-                1e-8 work best for polyphonic piano while 1e-3 work best for noisy guitar recording
+                1e-6 work best for polyphonic piano while 1e-3 work best for noisy guitar recording
                 ''', metavar='<float>')
             piano_debug_group.add_argument('-d', '--debug', type=float, help='debug a certain time frame, will show the cross-correlation with the template matrix and pseudo2D spectrum', metavar='<time in seconds>')
-            p.set_defaults(gamma=50, standard_deviation=1e-3, threshold=0.55)
+            p.set_defaults(gamma=1, standard_deviation=1e-3, threshold=0.54)
 
         input_group.add_argument("-u", '--url', type=str, help='URL to the music file')
         input_group.add_argument('-r', '--recording', action='store_true', help='Record audio from microphone')
@@ -116,7 +116,7 @@ def handle_extraction(STEM, path_to_audio):
     res_path = os.path.join(current_directory, "separated", model, name, STEM + ".mp3")
     valid_STEM = ["guitar", "piano", "drums", "vocals", "bass", "other"]
     if STEM not in valid_STEM:
-        print(colored("Invalid instrument to extract","red", attrs=["bold"]),": please provide one of the following: guitar, piano, drums, vocals, bass or other.",sep="")
+        print(colored("Invalid instrument to extract","red", attrs=["bold"]),": please provide one of the following: guitar, piano, vocals, bass or other.",sep="")
         sys.exit(1)
     demucs.separate.main(["--mp3", "--two-stems", STEM, "-n", model, path_to_audio])
     return res_path

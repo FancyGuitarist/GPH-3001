@@ -18,9 +18,9 @@ class Pseudo2D(AudioParams):
         self.n_harmonics = 3
         self.audio = audio
         self.threshold = 0.54
-        self.std_threshold = 1e-2*0.5
-        self.gamma = 50
-        self.min_length = 5
+        self.std_threshold = 1e-3
+        self.gamma = 1
+        self.min_length = 4
 
     @cached_property
     def cqt(self):
@@ -95,20 +95,15 @@ class Pseudo2D(AudioParams):
         damping_factor = 1
         for i in harmo:
             rq[i] = 1 * damping_factor
-            # -6 dB per harmonic
-            #damping_factor /= librosa.db_to_amplitude(4.7)
+            damping_factor /= librosa.db_to_amplitude(4.7)
         template_matrix = np.outer(rq, rq)
         template_matrix = template_matrix / np.sqrt(np.sum(template_matrix**2))
         return template_matrix
-
-    def init_template_from_file(self, path):
-        self.template_matrix = np.load(path)
 
     def generate_template_from_audio_file(self, path):
         #import pdb; pdb.set_trace()
         #breakpoint()
         audio = AudioSignal(path)
-        # get the cqt at half the time
         cqt = librosa.cqt(y=audio.y,
                           sr=audio.sampling_rate,
                           fmin=self.note_min.hz,
@@ -125,27 +120,21 @@ class Pseudo2D(AudioParams):
         frame = np.argmax(voiced_probs)
         fundamental_freq = f0[frame]
         midi_shift = int(librosa.hz_to_midi(fundamental_freq) - self.note_min.midi)
-        size = self.R(self.n_harmonics).astype(int) + 1
-        # plt.plot(np.abs(cqt[:,frame]))
-        # plt.show()
         template_1D = np.roll(np.abs(cqt[:,frame]), -midi_shift*(self.n_bins_per_octave // 12 ), axis=0).flatten()
-        # print(f"note : {librosa.hz_to_note(fundamental_freq)}, prob voiced : {voiced_probs[frame]}, shift : {librosa.hz_to_midi(fundamental_freq)}")
-        # plt.plot(template_1D)
-        # plt.show()
-        # filter the non local maximum
+
         # Find indices of local maxima
         local_maxima_indices = np.argwhere(
             (template_1D > np.roll(template_1D, 1, axis=0)) &
             (template_1D > np.roll(template_1D, -1, axis=0))
         ).flatten()
 
-        # Create an array of zeros
         output_array = np.zeros_like(template_1D)
 
         # Set only the local maxima to their original values
         output_array[local_maxima_indices] = template_1D[local_maxima_indices]
 
         # only keep the first n_harmonics
+        size = self.R(self.n_harmonics).astype(int) + 1
         template_1D = output_array[:size]
 
         template_1D /= np.linalg.norm(template_1D)
@@ -303,7 +292,7 @@ class Pseudo2D(AudioParams):
 
         return simple_grouped_notes
 
-    def show_multipitch_estimate(self, piano_roll: np.ndarray, ax=plt.gca):
+    def show_multipitch_estimate(self, piano_roll: np.ndarray, ax=None):
         librosa.display.specshow(
             piano_roll,
             fmin=self.note_min.hz,
@@ -315,6 +304,7 @@ class Pseudo2D(AudioParams):
         plt.xlabel('Time')
         plt.ylabel('Pitch')
         plt.title('Multipitch estimation')
+        plt.show()
 
     def show(self, time):
         frame = librosa.time_to_frames(
@@ -328,14 +318,13 @@ class Pseudo2D(AudioParams):
 
         cross_corr = self.cross_correlate_diag(i, _2D=True)
         fig, ax = plt.subplots(1, 3)
-
         ax[0].imshow(np.abs(scipy.signal.correlate(self.template_matrix,i)), origin='lower')
         ax[1].imshow(self.template_matrix, origin='lower')
         ax[2].imshow(np.abs(i), origin='lower')
 
-        ax[0].set_title('Cross-correlation with template')
-        ax[1].set_title('Template matrix')
-        ax[2].set_title('Pseudo 2D spectrum')
+        ax[0].set_title('Correlation croisé avec le modèle harmonique')
+        ax[1].set_title('Modèle harmonique')
+        ax[2].set_title('Spectre pseudo 2D')
         fig.tight_layout()
         plt.show()
 

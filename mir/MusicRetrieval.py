@@ -145,7 +145,7 @@ class Mono(MonoParams):
                 hop_length=self.hop_length)
         return f0, voiced_flag, voiced_prob
 
-    def no_hmm(self, threshold=0.7) -> NDArray[np.float64]:
+    def no_hmm(self, threshold=0.7) -> np.ndarray:
         pitch, voiced_flag, voiced_prob = (self.pitch, self.voiced_flag, self.voiced_prob)
 
         f0_ = np.round(librosa.hz_to_midi(pitch - self.tuning)).astype(int)
@@ -195,7 +195,7 @@ class Mono(MonoParams):
 
         priors[self.onset_slice, onset_flags] = self.onset_acc  # Set priors for onsets
         priors[self.onset_slice, ~onset_flags] = (1 - self.onset_acc) / self.n_notes  # Set priors for non-onsets
-        # # TODO enlever la for loop et vectoriser la procédure
+        # TODO remove for loop and vectorize the procedure
         sustain_indices = np.arange(self.n_notes) + self.note_min.midi
 
         for j in range(self.n_notes):

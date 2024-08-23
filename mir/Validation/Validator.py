@@ -35,17 +35,18 @@ def convert_midi_to_wav(midi_path):
         raise Exception("Error while converting the midi file to wav, is fluidsynth installed ?")
     return name
 
-def benchmark(midi_path, show_piano=None, clean=False):
+def benchmark(midi_path, show_piano=None, clean=False,gamma=500,std_threshold=1e-6,min_length=3,threshold=0.54,template_matrix=None):
     name = convert_midi_to_wav(midi_path)
     audio = AudioSignal(name)
     pseudo = Pseudo2D(audio)
 
     # optimize the parameters for polyphonic piano
-    pseudo.gamma = 500
-    pseudo.std_threshold = 1e-6
-    pseudo.min_length = 3
-    pseudo.threshold = 0.64
-    #pseudo.template_matrix = pseudo.generate_template_from_audio_file("/Users/antoine/Desktop/GPH/E2024/PFE/mir/single-piano-note-a3_60bpm_A_major.wav")
+    pseudo.gamma = gamma
+    pseudo.std_threshold = std_threshold
+    pseudo.min_length = min_length
+    pseudo.threshold = threshold
+    if template_matrix is not None:
+        pseudo.template_matrix = pseudo.generate_template_from_audio_file("/Users/antoine/Desktop/GPH/E2024/PFE/mir/single-piano-note-a3_60bpm_A_major.wav")
     #pseudo.show(1)
     #plt.show()
     #test_result, piano = pseudo.multipitch_estimate()
@@ -70,7 +71,6 @@ def compare(midi_file_path, pseudo: Pseudo2D ,hop_length = params.hop_length, sa
 
     hop_time = (hop_length/sampling_rate)
     s = len(test_result)
-    print(f"{s=}")
     estimate_time = np.linspace(0,s*hop_time,s)
 
     midi_roll = np.zeros((128, mid.instruments[0].get_piano_roll(times=estimate_time).shape[1]))
@@ -83,11 +83,12 @@ def compare(midi_file_path, pseudo: Pseudo2D ,hop_length = params.hop_length, sa
         fig, (ax)= plt.subplots()
         #ax1.imshow(midi_roll, aspect='auto', origin='lower', interpolation='nearest')
         #librosa.display.specshow(midi_roll, y_axis='cqt_note', x_axis='time', sr=sampling_rate, hop_length=hop_length, ax=ax1, fmin=librosa.midi_to_hz(0))
-        ax.title.set_text('Ground Truth and Estimate')
+        ax.title.set_text('Vérité Absolue (rose) et Estimation (bleu))')
         #ax.legend(labels=['Ground Truth', 'Estimate'], loc='upper right')
         librosa.display.specshow(midi_roll, y_axis='cqt_note', x_axis='time', sr=sampling_rate, hop_length=hop_length, ax=ax, cmap='Reds', alpha=0.5)
         librosa.display.specshow(piano, y_axis='cqt_note', x_axis='time', sr=sampling_rate, hop_length=hop_length, ax=ax, fmin=librosa.midi_to_hz(pseudo.note_min.midi + 24.0) , cmap='Blues', alpha=0.5)
         fig.tight_layout()
+        ax.set_xlabel('Temps (minutes : secondes)')
 
         fig.set_size_inches(12, 6)
 
