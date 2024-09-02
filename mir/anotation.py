@@ -326,10 +326,10 @@ class Partition:
         meter = abjad.Meter((4, 4))
         time_signature = abjad.TimeSignature((4, 4))
         if treble_container is not None:
-            treble_measures = abjad.mutate.split(treble_container[:], [meter], cyclic=True)
+            treble_measures = abjad.mutate.split(treble_container[:], [meter], cyclic=False)
 
         if bass_container is not None:
-            bass_measures = abjad.mutate.split(bass_container[:], [meter], cyclic=True)
+            bass_measures = abjad.mutate.split(bass_container[:], [meter], cyclic=False)
 
 
         if treble_container is not None:

@@ -322,7 +322,7 @@ class Pseudo2D(AudioParams):
         ax[1].imshow(self.template_matrix, origin='lower')
         ax[2].imshow(np.abs(i), origin='lower')
 
-        ax[0].set_title('Correlation croisé avec le modèle harmonique')
+        ax[0].set_title('Correlation croisée avec le modèle harmonique')
         ax[1].set_title('Modèle harmonique')
         ax[2].set_title('Spectre pseudo 2D')
         fig.tight_layout()
@@ -340,12 +340,12 @@ if __name__ == "__main__":
     # plt.show()
     from MusicRetrieval import Note
 
-    song, piano = pseudo.multipitch_estimate()
-    pseudo.show_multipitch_estimate(piano, ax=ax[0])
-    pseudo.template_matrix = pseudo.generate_template_from_audio_file("/Users/antoine/Desktop/GPH/E2024/PFE/mir/single-piano-note-a4_100bpm_C_major.wav")
-    song, piano = pseudo.multipitch_estimate()
-    pseudo.show_multipitch_estimate(piano, ax=ax[1])
-    plt.show()
+    # song, piano = pseudo.multipitch_estimate()
+    # pseudo.show_multipitch_estimate(piano, ax=ax[0])
+    # pseudo.template_matrix = pseudo.generate_template_from_audio_file("/Users/antoine/Desktop/GPH/E2024/PFE/mir/single-piano-note-a4_100bpm_C_major.wav")
+    # song, piano = pseudo.multipitch_estimate()
+    # pseudo.show_multipitch_estimate(piano, ax=ax[1])
+    # plt.show()
     pseudo.show(3)
 
     #print(pseudo.to_simple_notation_v2(piano))

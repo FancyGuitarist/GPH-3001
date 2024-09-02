@@ -177,7 +177,7 @@ def main(arg_list: list[str] | None = None):
 
     elif args.Modes == "chord-only":
         pgb("chord-Only mode enabled")
-        from Chord import ChordIdentifier
+        from mir.Chord import ChordIdentifier
         chord = ChordIdentifier(audio)
         if args.piano_roll:
             chord.show()
